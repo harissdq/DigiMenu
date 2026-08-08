@@ -30,7 +30,10 @@ class RestaurantSession @Inject constructor(
             clear()
             return
         }
-        val name = restaurantRepository.info(id)?.name
+        // The name is best-effort: some rule sets / old seeds don't expose
+        // restaurants/{id}/info, and a denied read here must never stop the
+        // tenant from resolving (that used to crash the app on login).
+        val name = runCatching { restaurantRepository.info(id)?.name }.getOrNull()
         _restaurantId.value = id
         _restaurantName.value = name ?: id
     }

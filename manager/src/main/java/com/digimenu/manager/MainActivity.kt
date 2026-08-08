@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -27,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.digimenu.manager.ui.screens.AdminScreen
 import com.digimenu.manager.ui.screens.LoginScreen
 import com.digimenu.manager.ui.screens.MenuScreen
 import com.digimenu.manager.ui.screens.OrdersScreen
@@ -52,6 +54,7 @@ private enum class ManagerTab(val label: String, val icon: ImageVector) {
     Menu("Menu", Icons.Filled.Restaurant),
     QrCodes("QR Codes", Icons.Filled.QrCode2),
     Orders("Orders", Icons.Filled.ShoppingCart),
+    Admin("Admin", Icons.Filled.Settings),
 }
 
 @Composable
@@ -69,6 +72,14 @@ private fun ManagerRoot(viewModel: ManagerViewModel = hiltViewModel()) {
 private fun ManagerScaffold(viewModel: ManagerViewModel) {
     var tabIndex by rememberSaveable { mutableIntStateOf(0) }
     val restaurantName by viewModel.restaurantName.collectAsStateWithLifecycle()
+    val isAdmin by viewModel.isAdmin.collectAsStateWithLifecycle()
+
+    val tabs = buildList {
+        add(ManagerTab.Menu)
+        add(ManagerTab.QrCodes)
+        add(ManagerTab.Orders)
+        if (isAdmin) add(ManagerTab.Admin)
+    }
 
     Scaffold(
         topBar = {
@@ -81,7 +92,7 @@ private fun ManagerScaffold(viewModel: ManagerViewModel) {
         },
         bottomBar = {
             NavigationBar {
-                ManagerTab.entries.forEachIndexed { index, tab ->
+                tabs.forEachIndexed { index, tab ->
                     NavigationBarItem(
                         selected = tabIndex == index,
                         onClick = { tabIndex = index },
@@ -97,10 +108,11 @@ private fun ManagerScaffold(viewModel: ManagerViewModel) {
                 .fillMaxSize()
                 .padding(padding),
         ) {
-            when (ManagerTab.entries[tabIndex]) {
+            when (tabs.getOrElse(tabIndex) { ManagerTab.Menu }) {
                 ManagerTab.Menu -> MenuScreen()
                 ManagerTab.QrCodes -> QrCodesScreen()
                 ManagerTab.Orders -> OrdersScreen()
+                ManagerTab.Admin -> AdminScreen()
             }
         }
     }

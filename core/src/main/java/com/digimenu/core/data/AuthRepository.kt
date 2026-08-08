@@ -56,4 +56,8 @@ class AuthRepository @Inject constructor(
 
     /** True when the signed-in user is an authorised manager of some restaurant. */
     suspend fun isManager(): Boolean = currentRestaurantId() != null
+
+    /** True for the bootstrap admin account, which can create restaurants. */
+    fun isAdmin(): Boolean =
+        auth.currentUser?.email?.equals(FirebaseRefs.ADMIN_EMAIL, ignoreCase = true) == true
 }

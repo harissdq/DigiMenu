@@ -25,6 +25,13 @@ object FirebaseRefs {
     const val DEFAULT_RESTAURANT = "demo-restaurant"
 
     /**
+     * Bootstrap admin account that can create/manage restaurants from the app
+     * and via the database rules. Production setups should move this to a
+     * server-side admin list.
+     */
+    const val ADMIN_EMAIL = "haris.sdq@gmail.com"
+
+    /**
      * Realtime Database URL for this project.
      *
      * Realtime Databases created outside the default (us-central1) region get a
@@ -39,6 +46,9 @@ object FirebaseRefs {
 
     /** Root lookup from an authenticated user to the tenant they manage. */
     fun managersRoot(db: FirebaseDatabase) = db.getReference("managers")
+
+    /** Root of all restaurant tenants (admin-only reads/writes). */
+    fun restaurantsRoot(db: FirebaseDatabase) = db.getReference("restaurants")
 
     fun restaurant(db: FirebaseDatabase, restaurantId: String = DEFAULT_RESTAURANT) =
         db.getReference("restaurants").child(restaurantId)

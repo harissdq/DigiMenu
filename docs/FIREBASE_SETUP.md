@@ -33,38 +33,45 @@ the production set below.
 
 ### Rules
 
+The admin account is `haris.sdq@gmail.com` (see `FirebaseRefs.ADMIN_EMAIL`);
+it can create restaurants and link managers from the app's **Admin** tab. To
+change the admin, update this file's rules and `FirebaseRefs.ADMIN_EMAIL`
+together.
+
 ```json
 {
   "rules": {
     "managers": {
       "$uid": {
-        ".read": "auth != null && auth.uid == $uid",
-        ".write": false
+        ".read": "auth != null && (auth.uid == $uid || auth.token.email == 'haris.sdq@gmail.com')",
+        ".write": "auth != null && auth.token.email == 'haris.sdq@gmail.com'"
       }
     },
     "restaurants": {
+      ".read": "auth.token.email == 'haris.sdq@gmail.com'",
       "$restaurantId": {
+        ".read": "auth != null && (root.child('managers').child(auth.uid).child('restaurantId').val() == $restaurantId || root.child('restaurants').child($restaurantId).child('managers').child(auth.uid).val() == true || auth.token.email == 'haris.sdq@gmail.com')",
         "info": {
           ".read": true,
-          ".write": "auth != null && root.child('managers').child(auth.uid).child('restaurantId').val() == $restaurantId"
+          ".write": "auth != null && (root.child('managers').child(auth.uid).child('restaurantId').val() == $restaurantId || root.child('restaurants').child($restaurantId).child('managers').child(auth.uid).val() == true || auth.token.email == 'haris.sdq@gmail.com')"
         },
         "menu": {
           ".read": true,
-          ".write": "auth != null && root.child('managers').child(auth.uid).child('restaurantId').val() == $restaurantId"
+          ".write": "auth != null && (root.child('managers').child(auth.uid).child('restaurantId').val() == $restaurantId || root.child('restaurants').child($restaurantId).child('managers').child(auth.uid).val() == true || auth.token.email == 'haris.sdq@gmail.com')"
         },
         "tables": {
           ".read": true,
-          ".write": "auth != null && root.child('managers').child(auth.uid).child('restaurantId').val() == $restaurantId"
+          ".write": "auth != null && (root.child('managers').child(auth.uid).child('restaurantId').val() == $restaurantId || root.child('restaurants').child($restaurantId).child('managers').child(auth.uid).val() == true || auth.token.email == 'haris.sdq@gmail.com')"
         },
         "orders": {
           "$orderId": {
-            ".read": "auth != null && root.child('managers').child(auth.uid).child('restaurantId').val() == $restaurantId",
+            ".read": "auth != null && (root.child('managers').child(auth.uid).child('restaurantId').val() == $restaurantId || root.child('restaurants').child($restaurantId).child('managers').child(auth.uid).val() == true || auth.token.email == 'haris.sdq@gmail.com')",
             ".write": "newData.exists() && newData.child('tableId').val() != null"
           }
         },
         "managers": {
           ".read": true,
-          ".write": "auth != null && root.child('managers').child(auth.uid).child('restaurantId').val() == $restaurantId"
+          ".write": "auth != null && (root.child('managers').child(auth.uid).child('restaurantId').val() == $restaurantId || root.child('restaurants').child($restaurantId).child('managers').child(auth.uid).val() == true || auth.token.email == 'haris.sdq@gmail.com')"
         }
       }
     }
@@ -72,18 +79,19 @@ the production set below.
 }
 ```
 
-> A manager's tenant is stored at `managers/{uid}/restaurantId` (seeded via the
-> console — the app never writes it). All manager-only writes are gated on that
-> mapping matching `$restaurantId`, so each account only ever manages its own
-> restaurant.
+> A manager's tenant is stored at `managers/{uid}/restaurantId`; the legacy
+> `restaurants/{id}/managers/{uid} == true` map is also accepted, so databases
+> seeded before the multi-tenant change keep working without re-importing.
+> Manager-only writes are gated on one of those matching `$restaurantId`, plus
+> the admin email, so each account only ever manages its own restaurant.
 >
 > `orders` is intentionally writable by **anyone** (`newData` write) so a
 > customer in their phone browser can place an order (dine-in or take-away)
 > without an account — but only if the payload carries a `tableId` (take-away
-> orders use the literal `"TAKEAWAY"`). Reads are manager-only, so customers
-> never see other people's orders. For stricter control, generate a short-lived
-> signed token per scan and validate it server-side (out of scope for the
-> boilerplate).
+> orders use the literal `"TAKEAWAY"`). Reads are manager/admin-only, so
+> customers never see other people's orders. For stricter control, generate a
+> short-lived signed token per scan and validate it server-side (out of scope
+> for the boilerplate).
 
 ## 3. Wire the customer web page
 
@@ -148,6 +156,14 @@ Get the inputs from the console:
   if your database is not in the default region.
 
 Run with `--dry-run` first to preview the exact paths it will write.
+
+### Adding tenants from the app
+
+The main admin account (`haris.sdq@gmail.com`) sees an extra **Admin** tab when
+it signs in. From there it can create a restaurant (name + tables) and either
+become its manager or create + link a new manager account (email + password) —
+no console work needed. Creating a new restaurant as your own manager switches
+the app to it immediately.
 
 ## 5. Verify end-to-end
 
