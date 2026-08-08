@@ -1,0 +1,102 @@
+name: Build APKs
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Generate google-services.json
+        shell: bash
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            echo "$GOOGLE_SERVICES_JSON" | base64 --decode > manager/google-services.json
+            cp manager/google-services.json customer/google-services.json
+            echo "Using real Firebase config from the GOOGLE_SERVICES_JSON secret."
+          else
+            cat > manager/google-services.json <<'JSON'
+{
+  "project_info": {
+    "project_number": "000000000000",
+    "project_id": "digimenu-placeholder",
+    "storage_bucket": "digimenu-placeholder.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
+        "android_client_info": {
+          "package_name": "com.digimenu.manager"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
+        "android_client_info": {
+          "package_name": "com.digimenu.customer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ]
+}
+JSON
+            cp manager/google-services.json customer/google-services.json
+            echo "No GOOGLE_SERVICES_JSON secret set - using placeholder config (build-only, no live Firebase)."
+          fi
+
+      - name: Build debug APKs
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Upload manager APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: digimenu-manager-apk
+          path: manager/build/outputs/apk/debug/*.apk
+
+      - name: Upload customer APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: digimenu-customer-apk
+          path: customer/build/outputs/apk/debug/*.apk
