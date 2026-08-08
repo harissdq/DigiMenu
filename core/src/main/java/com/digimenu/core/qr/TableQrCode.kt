@@ -72,13 +72,14 @@ object TableQrCode {
         val queryIndex = url.indexOf('?')
         if (queryIndex < 0) return null
         val params = parseQuery(url.substring(queryIndex + 1))
-        val restaurant = params[RESTAURANT_QUERY_KEY] ?: DEFAULT_RESTAURANT_ID
+        val restaurantId = validateId(params[RESTAURANT_QUERY_KEY] ?: DEFAULT_RESTAURANT_ID)
+            ?: return null
         if (params[TAKEAWAY_QUERY_KEY] == "1") {
-            return validateId(restaurant)?.let { TableQrPayload(it, tableId = null, takeaway = true) }
+            return TableQrPayload(restaurantId, tableId = null, takeaway = true)
         }
         val table = params[WEB_QUERY_KEY]
         if (table.isNullOrBlank()) return null
-        return validateId(table)?.let { TableQrPayload(restaurant, it, takeaway = false) }
+        return validateId(table)?.let { TableQrPayload(restaurantId, it, takeaway = false) }
     }
 
     private fun parseQuery(query: String): Map<String, String> {
