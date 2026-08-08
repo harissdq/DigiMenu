@@ -7,13 +7,13 @@ package com.digimenu.core.qr
  * query parameter. Scanning the QR opens the restaurant's menu straight in the
  * customer's phone browser (no customer app needed) and pre-selects the table.
  *
- * The canonical payload is `https://harissdq.github.io/DigiMenu/web/?table=Table_1`.
+ * The canonical payload is `https://harissdq.github.io/DigiMenu/?table=Table_1`.
  * Change [WEB_BASE_URL] if the web page is hosted elsewhere.
  */
 object TableQrCode {
 
     /** Base URL of the customer web app. Must match where the site is deployed. */
-    const val WEB_BASE_URL = "https://harissdq.github.io/DigiMenu/web/"
+    const val WEB_BASE_URL = "https://harissdq.github.io/DigiMenu/"
 
     const val WEB_QUERY_KEY = "table"
 
