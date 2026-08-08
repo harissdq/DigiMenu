@@ -93,6 +93,25 @@ together.
 > short-lived signed token per scan and validate it server-side (out of scope
 > for the boilerplate).
 
+**Publishing the rules.** The exact JSON above is also committed as
+[`docs/database.rules.json`](database.rules.json) — use that file, not copy-paste.
+
+- *Console:* Realtime Database → **Rules** tab. Paste the JSON, then click the
+  blue **Publish** button at the top of the editor (it only appears after the
+  editor detects a change). If no button shows, toggle the editor by deleting
+  and re-pasting the content, or click away so the editor marks the rules as
+  modified.
+- *CLI:* publish from the terminal with a service account (no console needed):
+
+  ```bash
+  node tools/create-tenant.mjs publish-rules <service-account.json> \
+      docs/database.rules.json \
+      --database-url https://<project>-default-rtdb.<region>.firebasedatabase.app
+  ```
+
+  Run with `--dry-run` to preview. Rules take effect immediately and read back
+  through the REST endpoint `/.settings/rules.json`.
+
 ## 3. Wire the customer web page
 
 The page lives in `web/` and is deployed automatically to

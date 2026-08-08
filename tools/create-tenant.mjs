@@ -34,16 +34,20 @@ const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const TOKEN_AUD = "https://oauth2.googleapis.com/token";
 const DB_SUFFIX = "-default-rtdb.firebaseio.com";
 
-const USAGE = `DigiMenu tenant creator.
+const USAGE = `DigiMenu admin tool.
 
-Usage:
+Create a tenant:
   node tools/create-tenant.mjs <service-account.json> \\
       --uid <managerUID> --restaurant <restaurantId> --name "Restaurant Name" \\
       [--tables "T1,T2"] [--seed-demo-menu] [--menu menu.json] \\
       [--create-user --email a@b.c --password secret --api-key <webApiKey>] \\
       [--database-url https://...] [--dry-run]
 
-Options:
+Publish the Realtime Database rules (avoids the console):
+  node tools/create-tenant.mjs publish-rules <service-account.json> \\
+      [docs/database.rules.json] [--database-url https://...] [--dry-run]
+
+Options (create):
   --uid <uid>            Manager account uid (Authentication -> Users). Required.
   --restaurant <id>      Tenant id, URL-safe (e.g. "bistro-downtown"). Required.
   --name <name>          Display name shown in the app top bar. Required.
@@ -54,9 +58,11 @@ Options:
   --email <email>        Email for the new account (with --create-user).
   --password <pass>      Password for the new account (with --create-user).
   --api-key <key>        Public web API key (with --create-user).
+
+Options (all):
   --database-url <url>   Realtime Database URL from the console. Defaults to
                          https://<project>-default-rtdb.firebaseio.com.
-  --dry-run              Print the writes without sending anything.
+  --dry-run              Print what would happen without sending anything.
   --help                 Show this help.`;
 
 /* ------------------------------------------------------------------ args */
@@ -120,7 +126,9 @@ function parseArgs(argv) {
         break;
       default:
         if (a.startsWith("-")) throw new Error(`Unknown option: ${a}`);
-        if (!out.serviceAccount) out.serviceAccount = a;
+        if (!out.subcommand && a === "publish-rules") out.subcommand = a;
+        else if (!out.serviceAccount) out.serviceAccount = a;
+        else if (out.subcommand === "publish-rules" && !out.rulesFile) out.rulesFile = a;
         else throw new Error(`Unexpected argument: ${a}`);
     }
   }
@@ -293,6 +301,71 @@ async function applyUpdate(databaseUrl, accessToken, payload) {
   return JSON.parse(text);
 }
 
+/** Reads the currently active Realtime Database rules. */
+async function fetchRules(databaseUrl, accessToken) {
+  const res = await fetch(`${databaseUrl}/.settings/rules.json`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`Reading rules failed (${res.status}): ${text}`);
+  return JSON.parse(text);
+}
+
+/** Publishes new Realtime Database rules (bypasses the console entirely). */
+async function publishRules(databaseUrl, accessToken, rules) {
+  const res = await fetch(`${databaseUrl}/.settings/rules.json?writeSizeLimit=medium`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(rules),
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`Publishing rules failed (${res.status}): ${text}`);
+  return text;
+}
+
+async function publishRulesMain(opts, sa) {
+  const rulesPath = path.resolve(opts.rulesFile || "docs/database.rules.json");
+  if (!fs.existsSync(rulesPath)) {
+    console.error(`Rules file not found: ${rulesPath}`);
+    process.exit(2);
+  }
+  let rules;
+  try {
+    rules = JSON.parse(fs.readFileSync(rulesPath, "utf8"));
+  } catch (err) {
+    console.error(`Rules file is not valid JSON: ${err.message}`);
+    process.exit(2);
+  }
+  if (!rules || typeof rules.rules !== "object") {
+    console.error('Rules file must contain a "rules" object.');
+    process.exit(2);
+  }
+  const databaseUrl = opts.databaseUrl || `https://${sa.project_id}${DB_SUFFIX}`;
+
+  if (opts.dryRun) {
+    console.log("DRY RUN — would publish to:");
+    console.log(`  ${databaseUrl}/.settings/rules.json`);
+    console.log(JSON.stringify(rules, null, 2));
+    return;
+  }
+
+  console.log("Exchanging service-account JWT for an access token ...");
+  const accessToken = await exchangeToken(sa.client_email, sa.private_key);
+
+  const current = await fetchRules(databaseUrl, accessToken);
+  console.log(
+    "Current rules top-level keys:",
+    Object.keys((current && current.rules) || {}).join(", ") || "(none)",
+  );
+
+  console.log(`Publishing rules to ${databaseUrl} ...`);
+  await publishRules(databaseUrl, accessToken, rules);
+  console.log("Rules published. The app admin tab + restaurant writes are now allowed.");
+}
+
 /* ------------------------------------------------------------------- main */
 
 async function main() {
@@ -312,19 +385,24 @@ async function main() {
     process.exit(2);
   }
 
-  if (opts.createUser) {
-    if (!opts.email || !opts.password || !opts.apiKey) {
-      console.error("--create-user requires --email, --password and --api-key.");
-      process.exit(2);
-    }
-  }
-
   const saPath = path.resolve(opts.serviceAccount);
   if (!fs.existsSync(saPath)) {
     console.error(`Service account file not found: ${saPath}`);
     process.exit(2);
   }
   const sa = JSON.parse(fs.readFileSync(saPath, "utf8"));
+
+  if (opts.subcommand === "publish-rules") {
+    await publishRulesMain(opts, sa);
+    return;
+  }
+
+  if (opts.createUser) {
+    if (!opts.email || !opts.password || !opts.apiKey) {
+      console.error("--create-user requires --email, --password and --api-key.");
+      process.exit(2);
+    }
+  }
 
   if (opts.menuFile) opts.menuItems = loadMenu(opts.menuFile);
 
