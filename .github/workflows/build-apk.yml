@@ -74,6 +74,9 @@ jobs:
             echo "No GOOGLE_SERVICES_JSON secret set - using placeholder config (build-only, no live Firebase)."
           fi
 
+      - name: Run core unit tests
+        run: ./gradlew :core:testDebugUnitTest --stacktrace
+
       - name: Build manager debug APK
         run: ./gradlew :manager:assembleDebug --stacktrace
 
