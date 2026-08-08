@@ -8,7 +8,8 @@
 (function () {
   "use strict";
 
-  var RESTAURANT_ID = "demo-restaurant"; // must match FirebaseRefs.DEFAULT_RESTAURANT
+  var RESTAURANT_ID = "demo-restaurant"; // tenant id, overridden from ?restaurant=
+  var IS_TAKEAWAY = false; // set from ?takeaway=1 (public take-away QR)
   var STATUS_NEW = "NEW";
 
   var CONFIG = window.DIGIMENU_FIREBASE_CONFIG || {};
@@ -77,6 +78,21 @@
       db = firebase.database();
     }
 
+    var params = new URLSearchParams(window.location.search);
+    var restaurantParam = (params.get("restaurant") || "").trim();
+    if (restaurantParam) RESTAURANT_ID = restaurantParam;
+    IS_TAKEAWAY = params.get("takeaway") === "1" || params.get("takeaway") === "true";
+
+    if (IS_TAKEAWAY) {
+      // Public take-away QR: no table, customer orders from home.
+      tableLabel = "Take Away";
+      $("table-label").textContent = "Take Away";
+      $("lead-table").textContent = "Take Away";
+      $("lead-address").classList.remove("hidden");
+      show("lead");
+      return;
+    }
+
     tableId = parseTableId();
     if (!tableId) {
       $("table-error-msg").textContent =
@@ -125,10 +141,12 @@
     event.preventDefault();
     var name = $("lead-name").value.trim();
     var phone = $("lead-phone").value.trim();
+    var address = $("lead-address").value.trim();
     $("lead-error").textContent = "";
     if (!name) { $("lead-error").textContent = "Please enter your name."; return; }
     if (!isValidPhone(phone)) { $("lead-error").textContent = "Please enter a valid phone number."; return; }
-    lead = { name: name, phone: phone };
+    if (IS_TAKEAWAY && !address) { $("lead-error").textContent = "Please enter your delivery address."; return; }
+    lead = { name: name, phone: phone, address: address };
     startMenu();
   }
 
@@ -326,10 +344,12 @@
     var total = lines.reduce(function (sum, l) { return sum + l.qty * l.item.price; }, 0);
 
     var order = {
-      tableId: tableId,
-      tableLabel: tableLabel,
+      orderType: IS_TAKEAWAY ? "takeaway" : "dine-in",
+      tableId: IS_TAKEAWAY ? "TAKEAWAY" : tableId,
+      tableLabel: IS_TAKEAWAY ? "Take Away" : tableLabel,
       customerName: lead.name,
       customerPhone: lead.phone,
+      address: IS_TAKEAWAY ? lead.address : "",
       items: items,
       total: total,
       status: STATUS_NEW,
@@ -338,7 +358,9 @@
 
     var done = function () {
       $("confirm-table").textContent = tableLabel;
-      $("confirm-number").textContent = "Order for " + lead.name + " (" + lead.phone + ")";
+      var confirmText = "Order for " + lead.name + " (" + lead.phone + ")";
+      if (IS_TAKEAWAY) confirmText += " \u2014 deliver to: " + lead.address;
+      $("confirm-number").textContent = confirmText;
       cart = {};
       refreshCart();
       show("confirmation");

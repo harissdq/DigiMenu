@@ -12,11 +12,13 @@ import com.google.firebase.database.FirebaseDatabase
  * the scanned QR payload instead.
  *
  * Schema:
+ *   managers/{uid}/restaurantId  -> tenant id the account manages
  *   restaurants/{id}/
- *     menu/{itemId}/       -> MenuItem
- *     tables/{tableId}/    -> TableSeat
- *     orders/{orderId}/    -> Order
- *     managers/{uid}/true  -> uid of an authorised manager
+ *     info/name                  -> RestaurantInfo
+ *     menu/{itemId}/             -> MenuItem
+ *     tables/{tableId}/          -> TableSeat
+ *     orders/{orderId}/          -> Order
+ *     managers/{uid}/true        -> uid of an authorised manager
  */
 object FirebaseRefs {
 
@@ -35,8 +37,14 @@ object FirebaseRefs {
     const val DATABASE_URL =
         "https://com-digimenu-manager-default-rtdb.asia-southeast1.firebasedatabase.app"
 
+    /** Root lookup from an authenticated user to the tenant they manage. */
+    fun managersRoot(db: FirebaseDatabase) = db.getReference("managers")
+
     fun restaurant(db: FirebaseDatabase, restaurantId: String = DEFAULT_RESTAURANT) =
         db.getReference("restaurants").child(restaurantId)
+
+    fun info(db: FirebaseDatabase, restaurantId: String = DEFAULT_RESTAURANT) =
+        restaurant(db, restaurantId).child("info")
 
     fun menu(db: FirebaseDatabase, restaurantId: String = DEFAULT_RESTAURANT) =
         restaurant(db, restaurantId).child("menu")

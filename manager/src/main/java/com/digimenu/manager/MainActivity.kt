@@ -68,11 +68,12 @@ private fun ManagerRoot(viewModel: ManagerViewModel = hiltViewModel()) {
 @Composable
 private fun ManagerScaffold(viewModel: ManagerViewModel) {
     var tabIndex by rememberSaveable { mutableIntStateOf(0) }
+    val restaurantName by viewModel.restaurantName.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("DigiMenu Manager") },
+                title = { Text(restaurantName ?: "DigiMenu Manager") },
                 actions = {
                     TextButton(onClick = viewModel::logout) { Text("Logout") }
                 },

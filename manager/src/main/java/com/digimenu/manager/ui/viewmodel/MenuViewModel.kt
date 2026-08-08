@@ -3,12 +3,15 @@ package com.digimenu.manager.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.digimenu.core.data.MenuRepository
+import com.digimenu.core.data.RestaurantSession
 import com.digimenu.core.model.MenuItem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -24,9 +27,13 @@ data class MenuForm(
 @HiltViewModel
 class MenuViewModel @Inject constructor(
     private val menuRepository: MenuRepository,
+    private val session: RestaurantSession,
 ) : ViewModel() {
 
-    val items: StateFlow<List<MenuItem>> = menuRepository.observeMenu()
+    val items: StateFlow<List<MenuItem>> = session.restaurantId
+        .flatMapLatest { id ->
+            if (id == null) flowOf(emptyList()) else menuRepository.observeMenu(id)
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private val _form = MutableStateFlow(MenuForm())
@@ -64,6 +71,11 @@ class MenuViewModel @Inject constructor(
     fun save() {
         val form = _form.value
         val price = form.price.toDoubleOrNull()
+        val restaurantId = session.restaurantId.value
+        if (restaurantId == null) {
+            _message.value = "Not signed in to a restaurant."
+            return
+        }
         if (form.name.isBlank() || price == null) {
             _message.value = "Name and a valid price are required."
             return
@@ -74,7 +86,8 @@ class MenuViewModel @Inject constructor(
                 val editingId = _editingId.value
                 if (editingId == null) {
                     menuRepository.addItem(
-                        MenuItem(
+                        restaurantId = restaurantId,
+                        item = MenuItem(
                             name = form.name.trim(),
                             description = form.description.trim(),
                             price = price,
@@ -84,7 +97,8 @@ class MenuViewModel @Inject constructor(
                 } else {
                     val current = items.value.firstOrNull { it.id == editingId }
                     menuRepository.updateItem(
-                        MenuItem(
+                        restaurantId = restaurantId,
+                        item = MenuItem(
                             id = editingId,
                             name = form.name.trim(),
                             description = form.description.trim(),
@@ -102,7 +116,8 @@ class MenuViewModel @Inject constructor(
 
     fun delete(item: MenuItem) {
         viewModelScope.launch {
-            runCatching { menuRepository.deleteItem(item.id) }
+            val restaurantId = session.restaurantId.value ?: return@launch
+            runCatching { menuRepository.deleteItem(restaurantId = restaurantId, itemId = item.id) }
                 .onSuccess { _message.value = "Deleted ${item.name}." }
                 .onFailure { _message.value = "Delete failed: ${it.message}" }
         }
@@ -110,7 +125,8 @@ class MenuViewModel @Inject constructor(
 
     fun toggleAvailability(item: MenuItem) {
         viewModelScope.launch {
-            menuRepository.setAvailability(item.id, !item.available)
+            val restaurantId = session.restaurantId.value ?: return@launch
+            menuRepository.setAvailability(restaurantId = restaurantId, itemId = item.id, available = !item.available)
         }
     }
 

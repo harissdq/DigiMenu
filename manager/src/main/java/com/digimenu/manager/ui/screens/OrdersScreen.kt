@@ -80,7 +80,14 @@ private fun OrderCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Table: ${order.tableLabel}", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = if (order.orderType == Order.ORDER_TYPE_TAKEAWAY) {
+                        Order.TAKEAWAY_TABLE_LABEL
+                    } else {
+                        "Table: ${order.tableLabel}"
+                    },
+                    style = MaterialTheme.typography.titleMedium,
+                )
                 Text(
                     text = order.status,
                     style = MaterialTheme.typography.labelMedium,
@@ -95,6 +102,12 @@ private fun OrderCard(
                 text = "${order.customerName}  •  ${order.customerPhone}",
                 style = MaterialTheme.typography.bodyMedium,
             )
+            if (order.orderType == Order.ORDER_TYPE_TAKEAWAY && order.address.isNotBlank()) {
+                Text(
+                    text = "Deliver to: ${order.address}",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
             order.items.values.forEach { line ->
                 Text(
                     text = "${line.qty} × ${line.name}  —  Rs. ${"%.2f".format(line.price * line.qty)}",

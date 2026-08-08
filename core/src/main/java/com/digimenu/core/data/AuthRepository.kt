@@ -39,12 +39,21 @@ class AuthRepository @Inject constructor(
         auth.signOut()
     }
 
-    /** True when the signed-in user is an authorised manager of the restaurant. */
-    suspend fun isManager(restaurantId: String = FirebaseRefs.DEFAULT_RESTAURANT): Boolean {
-        val uid = auth.currentUser?.uid ?: return false
+    /**
+     * Id of the restaurant this signed-in user manages, resolved from the root
+     * `managers/{uid}/restaurantId` mapping. Null when not signed in or the
+     * account has no tenant (i.e. it is not an authorised manager).
+     */
+    suspend fun currentRestaurantId(): String? {
+        val uid = auth.currentUser?.uid ?: return null
         val snapshot = runCatching {
-            FirebaseRefs.managers(db, restaurantId).child(uid).get().await()
+            FirebaseRefs.managersRoot(db).child(uid).child("restaurantId").get().await()
         }.getOrNull()
-        return snapshot?.value == true
+        return snapshot?.value as? String ?: runCatching {
+            FirebaseRefs.managers(db, FirebaseRefs.DEFAULT_RESTAURANT).child(uid).get().await()
+        }.getOrNull()?.takeIf { it.value == true }?.let { FirebaseRefs.DEFAULT_RESTAURANT }
     }
+
+    /** True when the signed-in user is an authorised manager of some restaurant. */
+    suspend fun isManager(): Boolean = currentRestaurantId() != null
 }
