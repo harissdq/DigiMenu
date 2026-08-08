@@ -1,0 +1,42 @@
+{
+  "restaurants": {
+    "demo-restaurant": {
+      "managers": {
+        "AVNP9YjBkSP6mhzcx8JdybRfHRy1": true
+      },
+      "tables": {
+        "Table_1": {
+          "id": "Table_1",
+          "label": "Table 1",
+          "createdAt": 1700000000000
+        },
+        "Table_2": {
+          "id": "Table_2",
+          "label": "Table 2",
+          "createdAt": 1700000000000
+        }
+      },
+      "menu": {
+        "demo-item-1": {
+          "id": "demo-item-1",
+          "name": "Chicken Karahi",
+          "description": "Served with naan",
+          "price": 1800,
+          "category": "Mains",
+          "available": true,
+          "updatedAt": 1700000000000
+        },
+        "demo-item-2": {
+          "id": "demo-item-2",
+          "name": "Chai",
+          "description": "Fresh, hot, with cardamom",
+          "price": 150,
+          "category": "Drinks",
+          "available": true,
+          "updatedAt": 1700000000000
+        }
+      },
+      "orders": {}
+    }
+  }
+}

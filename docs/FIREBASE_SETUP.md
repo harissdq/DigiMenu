@@ -83,53 +83,11 @@ The page lives in `web/` and is deployed automatically to
 ## 4. Seed the demo tenant
 
 The apps default to `restaurants/demo-restaurant` (`FirebaseRefs.DEFAULT_RESTAURANT`).
-Import the JSON below into the database (⋮ → Import JSON) so the manager has a
-table to print and the customer has a menu to browse.
-
-```json
-{
-  "restaurants": {
-    "demo-restaurant": {
-      "managers": {
-        "<REPLACE_WITH_MANAGER_UID>": true
-      },
-      "tables": {
-        "Table_1": {
-          "id": "Table_1",
-          "label": "Table 1",
-          "createdAt": 1700000000000
-        },
-        "Table_2": {
-          "id": "Table_2",
-          "label": "Table 2",
-          "createdAt": 1700000000000
-        }
-      },
-      "menu": {
-        "demo-item-1": {
-          "id": "demo-item-1",
-          "name": "Chicken Karahi",
-          "description": "Served with naan",
-          "price": 1800,
-          "category": "Mains",
-          "available": true,
-          "updatedAt": 1700000000000
-        },
-        "demo-item-2": {
-          "id": "demo-item-2",
-          "name": "Chai",
-          "description": "Fresh, hot, with cardamom",
-          "price": 150,
-          "category": "Drinks",
-          "available": true,
-          "updatedAt": 1700000000000
-        }
-      },
-      "orders": {}
-    }
-  }
-}
-```
+Import [`docs/seed-data.json`](seed-data.json) into the database (⋮ → Import JSON)
+so the manager has a table to print and the customer has a menu to browse. The
+file already contains the manager UID; if you use a different account, replace
+its key under `managers/` with your own UID (copy it from *Authentication →
+Users*).
 
 To get the manager UID: sign in on the manager app, or look in
 *Authentication → Users* in the Firebase Console (the row's identifier).
