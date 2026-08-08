@@ -34,6 +34,12 @@ class ManagerViewModel @Inject constructor(
             _busy.value = true
             _error.value = null
             auth.login(email, password)
+                .onSuccess {
+                    if (!auth.isManager()) {
+                        auth.logout()
+                        _error.value = "This account is not an authorised manager."
+                    }
+                }
                 .onFailure { _error.value = "Login failed: ${it.message}" }
             _busy.value = false
         }

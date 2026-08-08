@@ -56,6 +56,29 @@ main {
   animation: fade-in 0.25s ease;
 }
 
+.demo-banner {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding: 10px 16px;
+  background: #fff8e1;
+  border-bottom: 2px solid #f9a825;
+  color: #5d4037;
+  font-size: 13px;
+  text-align: center;
+}
+
+.offline-banner {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding: 10px 16px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 14px;
+  text-align: center;
+}
+
 .hidden {
   display: none !important;
 }

@@ -1,4 +1,10 @@
-/* DigiMenu customer web app: scan QR -> lead capture -> live menu -> order. */
+/* DigiMenu customer web app: scan QR -> lead capture -> live menu -> order.
+ *
+ * Works in two modes:
+ *  - Firebase mode: talks to the restaurant's Realtime Database (config.js).
+ *  - DEMO mode: no Firebase config needed - uses a sample menu and stores
+ *    orders in localStorage so the whole flow can be tried immediately.
+ */
 (function () {
   "use strict";
 
@@ -6,9 +12,18 @@
   var STATUS_NEW = "NEW";
 
   var CONFIG = window.DIGIMENU_FIREBASE_CONFIG || {};
-  var configIsPlaceholder =
-    !CONFIG.apiKey || CONFIG.apiKey.indexOf("YOUR_") === 0 ||
-    !CONFIG.databaseURL || CONFIG.databaseURL.indexOf("YOUR_") === 0;
+  var IS_DEMO =
+    !CONFIG.apiKey || String(CONFIG.apiKey).indexOf("YOUR_") === 0 ||
+    !CONFIG.databaseURL || String(CONFIG.databaseURL).indexOf("YOUR_") === 0;
+
+  var DEMO_MENU = [
+    { id: "demo-item-1", name: "Chicken Karahi", description: "Served with fresh naan", price: 1800, category: "Mains", available: true },
+    { id: "demo-item-2", name: "Chicken Biryani", description: "Fragrant rice, spicy masala", price: 950, category: "Mains", available: true },
+    { id: "demo-item-3", name: "Tandoori Chicken", description: "Half, char-grilled", price: 1400, category: "Grills", available: true },
+    { id: "demo-item-4", name: "Vegetable Daal", description: "Yellow lentils, tadka", price: 500, category: "Mains", available: true },
+    { id: "demo-item-5", name: "Chai", description: "Fresh, hot, with cardamom", price: 150, category: "Drinks", available: true },
+    { id: "demo-item-6", name: "Cold Drink", description: "500 ml, chilled", price: 120, category: "Drinks", available: false }
+  ];
 
   var $ = function (id) { return document.getElementById(id); };
 
@@ -17,6 +32,8 @@
   var lead = { name: "", phone: "" };
   var cart = {}; // itemId -> { item, qty }
   var db = null;
+
+  /* ---------- helpers ---------- */
 
   function show(id) {
     var sections = document.querySelectorAll(".screen");
@@ -36,8 +53,7 @@
 
   function parseTableId() {
     var params = new URLSearchParams(window.location.search);
-    var raw = params.get("table") || "";
-    return raw.trim();
+    return (params.get("table") || "").trim();
   }
 
   function formatRs(value) {
@@ -51,6 +67,16 @@
   /* ---------- lifecycle ---------- */
 
   function init() {
+    if (IS_DEMO) {
+      var banner = document.createElement("div");
+      banner.className = "demo-banner";
+      banner.textContent = "DEMO MODE - using a sample menu. Add your Firebase web config to web/config.js to go live.";
+      document.body.insertBefore(banner, document.body.firstChild);
+    } else {
+      firebase.initializeApp(CONFIG);
+      db = firebase.database();
+    }
+
     tableId = parseTableId();
     if (!tableId) {
       $("table-error-msg").textContent =
@@ -58,13 +84,6 @@
       show("table-error");
       return;
     }
-    if (configIsPlaceholder) {
-      show("setup-error");
-      return;
-    }
-
-    firebase.initializeApp(CONFIG);
-    db = firebase.database();
 
     $("table-label").textContent = tableId;
     $("lead-table").textContent = tableId;
@@ -82,6 +101,9 @@
   }
 
   function verifyTable() {
+    if (IS_DEMO) {
+      return Promise.resolve(tableId);
+    }
     return db.ref("restaurants/" + RESTAURANT_ID + "/tables/" + tableId)
       .once("value")
       .then(function (snap) {
@@ -114,8 +136,18 @@
 
   function startMenu() {
     show("menu");
-    db.ref("restaurants/" + RESTAURANT_ID + "/menu")
-      .on("value", renderMenu);
+    if (IS_DEMO) {
+      renderMenu({
+        forEach: function (cb) {
+          DEMO_MENU.forEach(function (item) {
+            cb({ key: item.id, val: function () { return item; } });
+          });
+        }
+      });
+    } else {
+      db.ref("restaurants/" + RESTAURANT_ID + "/menu")
+        .on("value", renderMenu);
+    }
   }
 
   function renderMenu(snapshot) {
@@ -304,16 +336,30 @@
       createdAt: Date.now()
     };
 
+    var done = function () {
+      $("confirm-table").textContent = tableLabel;
+      $("confirm-number").textContent = "Order for " + lead.name + " (" + lead.phone + ")";
+      cart = {};
+      refreshCart();
+      show("confirmation");
+      button.disabled = false;
+      button.textContent = "Place order";
+    };
+
+    if (IS_DEMO) {
+      window.setTimeout(function () {
+        try {
+          var history = JSON.parse(localStorage.getItem("digimenu_demo_orders") || "[]");
+          history.push(order);
+          localStorage.setItem("digimenu_demo_orders", JSON.stringify(history));
+        } catch (e) { /* storage may be unavailable; still confirm */ }
+        done();
+      }, 600);
+      return;
+    }
+
     db.ref("restaurants/" + RESTAURANT_ID + "/orders").push().set(order)
-      .then(function () {
-        $("confirm-table").textContent = tableLabel;
-        $("confirm-number").textContent = "Order for " + lead.name + " (" + lead.phone + ")";
-        cart = {};
-        refreshCart();
-        show("confirmation");
-        button.disabled = false;
-        button.textContent = "Place order";
-      })
+      .then(done)
       .catch(function (err) {
         button.disabled = false;
         button.textContent = "Place order";
@@ -321,10 +367,19 @@
       });
   }
 
+  /* ---------- connectivity banner ---------- */
+
+  function setOnline(online) {
+    var banner = $("offline-banner");
+    if (banner) banner.classList.toggle("hidden", online);
+  }
+
   /* ---------- wire up ---------- */
 
   $("lead-form").addEventListener("submit", submitLead);
   $("place-order").addEventListener("click", placeOrder);
+  window.addEventListener("online", function () { setOnline(true); });
+  window.addEventListener("offline", function () { setOnline(false); });
 
   init();
 })();
