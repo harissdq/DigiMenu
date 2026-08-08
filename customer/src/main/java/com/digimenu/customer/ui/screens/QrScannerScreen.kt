@@ -142,7 +142,7 @@ private fun CameraPreview(
             runCatching {
                 val provider = cameraProviderFuture.get()
                 val preview = Preview.Builder().build().also {
-                    it.surfaceProvider = previewView.surfaceProvider
+                    it.setSurfaceProvider(previewView.surfaceProvider)
                 }
                 provider.unbindAll()
                 provider.bindToLifecycle(
