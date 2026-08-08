@@ -1,6 +1,14 @@
 {
+  "managers": {
+    "AVNP9YjBkSP6mhzcx8JdybRfHRy1": {
+      "restaurantId": "demo-restaurant"
+    }
+  },
   "restaurants": {
     "demo-restaurant": {
+      "info": {
+        "name": "Demo Restaurant"
+      },
       "managers": {
         "AVNP9YjBkSP6mhzcx8JdybRfHRy1": true
       },

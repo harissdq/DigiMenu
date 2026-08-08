@@ -2,7 +2,11 @@
 
 A restaurant system with **one Android app** (the Manager Dashboard) and a
 **browser-based customer page** (no customer app, no install). Customers scan a
-printed table QR code and the menu opens in their phone browser.
+printed table QR code and the menu opens in their phone browser. The system is
+**multi-tenant**: one Firebase project serves many restaurants, and each manager
+account is bound to exactly one restaurant. Every restaurant also exposes a
+**public Take Away QR** so customers can order from home with a delivery
+address.
 
 ## 1. System overview
 
@@ -17,22 +21,25 @@ printed table QR code and the menu opens in their phone browser.
 │  │ generator│ (live feed)  │ │
 │  └──────────┴──────────────┘ │
 └──────────────┬───────────────┘
-               │  QR encodes the web page URL: ?table=Table_1
+               │  QR encodes the web page URL: ?restaurant={id}&table={id}
+               │  Take Away QR: ?restaurant={id}&takeaway=1
                ▼
 ┌──────────────────────────────┐
 │  Customer web page (web/)    │   static HTML/CSS/JS + Firebase JS SDK
 │  ┌────────────────────────┐  │   hosted on GitHub Pages
 │  │ verify table           │  │
-│  │ lead capture           │  │
+│  │ lead capture (+ addr)  │  │
 │  │ live menu + cart       │  │
 │  │ place order            │  │
+│  │ take away ordering     │  │
 │  └────────────────────────┘  │
 └──────────────┬───────────────┘
                │
                ▼
 ┌──────────────────────────────┐
 │  Firebase Realtime Database  │   single backend, tenant-scoped
-│  restaurants/{id}/{menu,     │
+│  managers/{uid}/restaurantId │
+│  restaurants/{id}/{info,menu,│
 │   tables, orders, managers}  │
 └──────────────────────────────┘
 ```
@@ -78,17 +85,23 @@ never install anything — the QR opens the web page directly.
 ## 4. Data model (Firebase Realtime Database)
 
 ```
+managers/{uid}/
+  restaurantId                  -> tenant the account manages
 restaurants/{restaurantId}/
+  info/name                     -> RestaurantInfo
   menu/{itemId}/
     { id, name, description, price, category, available, updatedAt }
   tables/{tableId}/
     { id, label, createdAt }
   orders/{orderId}/
-    { id, tableId, tableLabel, customerName, customerPhone,
-      items: { itemId: { name, price, qty } },
+    { id, orderType, tableId, tableLabel, customerName, customerPhone,
+      address, items: { itemId: { name, price, qty } },
       total, status, createdAt }
-  managers/{uid} = true
+  managers/{uid} = true         -> legacy uid map (also seeded)
 ```
+
+`orderType` is `dine-in` or `takeaway`. Take-away orders use the literal
+`tableId` value `"TAKEAWAY"` and carry the customer's `address`.
 
 Real-time propagation:
 - **Menu**: manager's `MenuRepository.observeMenu()` and the web page's
@@ -99,13 +112,19 @@ Real-time propagation:
   gets the child the instant it lands.
 - **Status**: manager flips `status` (`NEW → PREPARING → DONE/CANCELLED`).
 
-## 5. QR → table mapping
+## 5. QR → restaurant & table mapping
 
-Payload format (canonical): the web page URL with the table id as a query
-parameter:
+Payload format (canonical): the web page URL with the restaurant id and the
+table id as query parameters:
 
 ```
-https://harissdq.github.io/DigiMenu/?table=Table_1
+https://harissdq.github.io/DigiMenu/?restaurant=demo-restaurant&table=Table_1
+```
+
+Take-away QR (restaurant-wide, no table):
+
+```
+https://harissdq.github.io/DigiMenu/?restaurant=demo-restaurant&takeaway=1
 ```
 
 `TableQrCode.decode()` also accepts a deep link (`digimenu://table/Table_1`) or a
@@ -116,7 +135,8 @@ Pipeline:
    to a bitmap; the same id is persisted to `tables/` via `TableRepository.ensureTable`.
 2. **Open** — the customer's phone camera reads the QR and opens the URL.
 3. **Verify** (`web/app.js`) — the page reads `tables/{id}`; only real tables can
-   start an order (shows a friendly error otherwise).
+   start a dine-in order (shows a friendly error otherwise). The take-away QR
+   skips table verification and asks for a delivery address instead.
 
 ## 6. Key flows
 
@@ -130,22 +150,34 @@ Pipeline:
 `OrdersScreen` → `OrderRepository.observeOrders()` → new `status=NEW` order card appears with items, qty, table.
 
 **Customer — scan → order**
-Phone camera opens the QR URL → `web/app.js` verifies the table → lead capture
-(name + phone) → live menu + cart → `db.ref(.../orders).push().set(order)` → the
-order appears on the manager dashboard instantly.
+Phone camera opens the QR URL → `web/app.js` resolves the restaurant id, verifies
+the table (or enters take-away mode) → lead capture (name + phone, plus a
+delivery address in take-away mode) → live menu + cart → `db.ref(.../orders).push().set(order)`
+→ the order appears on the manager dashboard instantly.
+
+**Manager — tenant resolution**
+`ManagerViewModel.login()` → `RestaurantSession.refresh()` →
+`AuthRepository.currentRestaurantId()` reads `managers/{uid}/restaurantId` (with a
+legacy fallback to `restaurants/demo-restaurant/managers/{uid} == true`). All
+repositories are then scoped to that id via `RestaurantSession.restaurantId`, so
+a manager only ever sees their own restaurant's data. The top bar shows the
+resolved restaurant name (`restaurants/{id}/info/name`).
 
 ## 7. Security notes (production hardening)
 
-- Realtime Database rules: `managers/` readable only by that restaurant's
-  authorised uids; `orders/` writeable by anyone (anonymous customers), readable
-  only by managers; `menu/` readable by all, writeable by managers only.
+- Realtime Database rules: `managers/{uid}` readable only by that user; manager
+  writes to `info`/`menu`/`tables`/`orders` gated on
+  `managers/{uid}/restaurantId == $restaurantId`; `orders/` writeable by anyone
+  (anonymous customers), readable only by managers; `menu`/`tables`/`info`
+  readable by all.
 - The QR payload id is only the *key* — never embed prices or customer data in a QR.
 - The web page never authenticates a customer; the **rules** are the security
   boundary for public writes.
 - The Firebase web SDK config in `web/config.js` is public by design — it only
   identifies the project; access control lives in the rules.
-- Bake the restaurant id from the manager's profile rather than the
-  `DEFAULT_RESTAURANT` constant for a multi-tenant deployment.
+- The restaurant id is derived from the signed-in manager's
+  `managers/{uid}/restaurantId` mapping (never from the QR payload), so a
+  scanned QR cannot escalate a manager across tenants.
 
 ## 8. Build & run
 
@@ -159,5 +191,6 @@ order appears on the manager dashboard instantly.
    and download the APK artifact from Actions.
 5. The web page is deployed to `https://harissdq.github.io/DigiMenu/` on every
    push to `main`.
-6. Seed `restaurants/demo-restaurant` (tables + menu + manager uid) as described
-   in `docs/FIREBASE_SETUP.md`, then print the table QRs from the app.
+6. Seed `managers/{uid}/restaurantId` + `restaurants/demo-restaurant` (info,
+   tables, menu, manager uid) as described in `docs/FIREBASE_SETUP.md`, then
+   print the table and Take Away QRs from the app.

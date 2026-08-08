@@ -36,25 +36,35 @@ the production set below.
 ```json
 {
   "rules": {
+    "managers": {
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": false
+      }
+    },
     "restaurants": {
       "$restaurantId": {
+        "info": {
+          ".read": true,
+          ".write": "auth != null && root.child('managers').child(auth.uid).child('restaurantId').val() == $restaurantId"
+        },
         "menu": {
           ".read": true,
-          ".write": "auth != null && root.child('restaurants').child($restaurantId).child('managers').child(auth.uid).val() == true"
+          ".write": "auth != null && root.child('managers').child(auth.uid).child('restaurantId').val() == $restaurantId"
         },
         "tables": {
           ".read": true,
-          ".write": "auth != null && root.child('restaurants').child($restaurantId).child('managers').child(auth.uid).val() == true"
+          ".write": "auth != null && root.child('managers').child(auth.uid).child('restaurantId').val() == $restaurantId"
         },
         "orders": {
           "$orderId": {
-            ".read": "auth != null && root.child('restaurants').child($restaurantId).child('managers').child(auth.uid).val() == true",
+            ".read": "auth != null && root.child('managers').child(auth.uid).child('restaurantId').val() == $restaurantId",
             ".write": "newData.exists() && newData.child('tableId').val() != null"
           }
         },
         "managers": {
-          ".read": "auth != null && root.child('restaurants').child($restaurantId).child('managers').child(auth.uid).val() == true",
-          ".write": "auth != null && root.child('restaurants').child($restaurantId).child('managers').child(auth.uid).val() == true"
+          ".read": true,
+          ".write": "auth != null && root.child('managers').child(auth.uid).child('restaurantId').val() == $restaurantId"
         }
       }
     }
@@ -62,9 +72,15 @@ the production set below.
 }
 ```
 
+> A manager's tenant is stored at `managers/{uid}/restaurantId` (seeded via the
+> console — the app never writes it). All manager-only writes are gated on that
+> mapping matching `$restaurantId`, so each account only ever manages its own
+> restaurant.
+>
 > `orders` is intentionally writable by **anyone** (`newData` write) so a
-> customer in their phone browser can place an order without an account — but
-> only if the payload carries a `tableId`. Reads are manager-only, so customers
+> customer in their phone browser can place an order (dine-in or take-away)
+> without an account — but only if the payload carries a `tableId` (take-away
+> orders use the literal `"TAKEAWAY"`). Reads are manager-only, so customers
 > never see other people's orders. For stricter control, generate a short-lived
 > signed token per scan and validate it server-side (out of scope for the
 > boilerplate).
@@ -90,21 +106,32 @@ The page lives in `web/` and is deployed automatically to
 
 ## 4. Seed the demo tenant
 
-The apps default to `restaurants/demo-restaurant` (`FirebaseRefs.DEFAULT_RESTAURANT`).
-Import [`docs/seed-data.json`](seed-data.json) into the database (⋮ → Import JSON)
-so the manager has a table to print and the customer has a menu to browse. The
-file already contains the manager UID; if you use a different account, replace
-its key under `managers/` with your own UID (copy it from *Authentication →
+Each manager account maps to one restaurant via the root `managers/{uid}/restaurantId`
+node. Import [`docs/seed-data.json`](seed-data.json) into the database
+(⋮ → Import JSON) so the manager has a tenant, tables to print, and the customer
+has a menu to browse. The file already contains the manager UID
+(`AVNP9YjBkSP6mhzcx8JdybRfHRy1`) under `managers/`. If you use a different
+account, replace that key with your own UID (copy it from *Authentication →
 Users*).
+
+To add another restaurant, create a second block under `restaurants/` and give
+the new manager a `restaurantId` under `managers/` — both apps are
+tenant-scoped, so each restaurant only ever sees its own menu, tables and
+orders.
 
 To get the manager UID: sign in on the manager app, or look in
 *Authentication → Users* in the Firebase Console (the row's identifier).
 
 ## 5. Verify end-to-end
 
-1. Manager app: sign in → menu shows the two seed items → *QR Codes* shows the
-   tables and can display their QR bitmaps.
+1. Manager app: sign in → top bar shows the restaurant name → menu shows the
+   two seed items → *QR Codes* shows the tables plus the **Take Away** QR and
+   can display their bitmaps.
 2. Print/scan a table QR (or open
-   `https://harissdq.github.io/DigiMenu/?table=Table_1` directly) → enter
-   name/phone → order a *Chicken Karahi* in the browser.
-3. Manager app: *Orders* tab shows the new order instantly.
+   `https://harissdq.github.io/DigiMenu/?restaurant=demo-restaurant&table=Table_1`
+   directly) → enter name/phone → order a *Chicken Karahi* in the browser.
+3. Take-away: open
+   `https://harissdq.github.io/DigiMenu/?restaurant=demo-restaurant&takeaway=1`
+   → enter name, phone **and delivery address** → order.
+4. Manager app: *Orders* tab shows the new order instantly (take-away orders
+   show "Take Away" and the delivery address).
