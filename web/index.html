@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DigiMenu</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="app-bar">
+    <span class="brand">DigiMenu</span>
+    <span id="table-label" class="table-label"></span>
+  </header>
+
+  <main>
+    <section id="loading" class="screen">
+      <p>Loading menu…</p>
+    </section>
+
+    <section id="setup-error" class="screen hidden">
+      <h2>Not configured yet</h2>
+      <p>Fill in your Firebase web config in <code>web/config.js</code> to go live.</p>
+    </section>
+
+    <section id="table-error" class="screen hidden">
+      <h2>Table not found</h2>
+      <p class="muted" id="table-error-msg"></p>
+    </section>
+
+    <section id="lead" class="screen hidden">
+      <h2>Welcome!</h2>
+      <p class="muted">You scanned <strong id="lead-table"></strong>. Enter your details to open the menu.</p>
+      <form id="lead-form" autocomplete="off">
+        <input id="lead-name" type="text" placeholder="Name" required />
+        <input id="lead-phone" type="tel" inputmode="numeric" placeholder="Phone number" required />
+        <p class="error" id="lead-error"></p>
+        <button type="submit">View menu</button>
+      </form>
+    </section>
+
+    <section id="menu" class="screen hidden">
+      <p class="muted empty" id="menu-empty">The menu is empty right now. Please wait a moment.</p>
+      <div id="menu-list"></div>
+    </section>
+
+    <section id="confirmation" class="screen hidden">
+      <div class="check">&#10003;</div>
+      <h2>Order placed!</h2>
+      <p class="muted">Thanks for ordering at <strong id="confirm-table"></strong>. We'll bring your food shortly.</p>
+      <p class="muted" id="confirm-number"></p>
+    </section>
+  </main>
+
+  <footer id="cart-bar" class="cart-bar hidden">
+    <div class="cart-summary">
+      <span id="cart-count">0 items</span>
+      <span class="cart-total" id="cart-total">Rs. 0.00</span>
+    </div>
+    <button id="place-order">Place order</button>
+  </footer>
+
+  <script src="config.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

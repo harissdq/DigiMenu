@@ -23,4 +23,3 @@ dependencyResolutionManagement {
 rootProject.name = "DigiMenu"
 include(":core")
 include(":manager")
-include(":customer")

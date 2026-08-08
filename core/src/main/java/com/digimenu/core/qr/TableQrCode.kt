@@ -1,72 +1,42 @@
 package com.digimenu.core.qr
 
-import android.net.Uri
-
-/** Outcome of parsing a scanned QR payload. */
-sealed interface QrParseResult {
-    /** The QR encoded a table and decoded to its canonical id. */
-    data class Table(val tableId: String) : QrParseResult
-
-    /** The QR payload did not map to a table. */
-    data object NotATable : QrParseResult
-}
-
 /**
- * Canonical QR payload format + parser for table QR codes.
+ * Canonical QR payload format for table QR codes.
  *
- * A table QR encodes exactly one piece of information — the canonical table id
- * (e.g. "Table_1") — wrapped in a stable, versionable payload. The manager app
- * generates it with [encode]; the customer app decodes it with [decode]. No
- * server round-trip is required to turn a payload into a table id, which makes
- * scanning work offline (verification against the table registry is a separate,
- * optional step in [QrTableResolver]).
+ * A table QR encodes the customer-facing menu page URL with the table id as a
+ * query parameter. Scanning the QR opens the restaurant's menu straight in the
+ * customer's phone browser (no customer app needed) and pre-selects the table.
  *
- * All of the following payloads resolve to the same table id:
- *  - Deep link : digimenu://table/Table_1
- *  - Web URL   : https://digimenu.app/t/Table_1
- *  - Web URL   : https://digimenu.app/?table=Table_1
- *  - Raw id    : Table_1
+ * The canonical payload is `https://harissdq.github.io/DigiMenu/web/?table=Table_1`.
+ * Change [WEB_BASE_URL] if the web page is hosted elsewhere.
  */
 object TableQrCode {
 
-    const val SCHEME = "digimenu"
-    const val HOST = "table"
-    const val WEB_HOST = "digimenu.app"
+    /** Base URL of the customer web app. Must match where the site is deployed. */
+    const val WEB_BASE_URL = "https://harissdq.github.io/DigiMenu/web/"
+
     const val WEB_QUERY_KEY = "table"
 
     /** Canonical payload to embed in the QR code for a table. */
-    fun encode(tableId: String): String = "$SCHEME://$HOST/" + normalize(tableId)
+    fun encode(tableId: String): String = "$WEB_BASE_URL?$WEB_QUERY_KEY=" + normalize(tableId)
 
-    fun decode(raw: String): QrParseResult {
-        val id = tryDecode(raw) ?: return QrParseResult.NotATable
-        return QrParseResult.Table(id)
-    }
-
-    private fun tryDecode(raw: String): String? {
+    /**
+     * Extracts the table id from a scanned payload (web URL, deep link or raw
+     * id) so a printed code can be verified against the table registry.
+     */
+    fun decode(raw: String): String? {
         val text = raw.trim()
         if (text.isEmpty()) return null
 
         return when {
-            text.startsWith("$SCHEME://") -> {
-                val uri = Uri.parse(text)
-                if (uri.host != HOST) null
-                else validateId(uri.path?.trim('/'))
-            }
-
             text.startsWith("http://") || text.startsWith("https://") -> {
-                val uri = Uri.parse(text)
-                if (uri.host != WEB_HOST) return null
+                val uri = android.net.Uri.parse(text)
                 uri.getQueryParameter(WEB_QUERY_KEY)?.takeIf { it.isNotBlank() }
                     ?.let { return validateId(it) }
-                val segments = uri.pathSegments
-                when {
-                    segments.size >= 2 && segments[0] == "t" -> validateId(segments[1])
-                    segments.size == 1 -> validateId(segments[0])
-                    else -> null
-                }
+                null
             }
 
-            else -> validateId(text) // raw id, e.g. from a plain text QR
+            else -> validateId(text) // raw id or deep link
         }
     }
 

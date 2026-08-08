@@ -1,0 +1,271 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --primary: #00695c;
+  --primary-dark: #004d40;
+  --bg: #f4f6f5;
+  --surface: #ffffff;
+  --text: #1a1a1a;
+  --muted: #546e7a;
+  --danger: #d32f2f;
+  --border: #e0e4e3;
+}
+
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding-bottom: 96px;
+}
+
+.app-bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.brand {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.table-label {
+  font-size: 14px;
+  opacity: 0.92;
+}
+
+main {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.screen {
+  animation: fade-in 0.25s ease;
+}
+
+.hidden {
+  display: none !important;
+}
+
+h2 {
+  margin: 8px 0 8px;
+  font-size: 22px;
+}
+
+.muted {
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.empty {
+  text-align: center;
+  margin-top: 24px;
+}
+
+.error {
+  color: var(--danger);
+  font-size: 14px;
+  min-height: 18px;
+  margin: 4px 0;
+}
+
+input {
+  display: block;
+  width: 100%;
+  padding: 14px 12px;
+  margin: 8px 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 16px;
+  background: var(--surface);
+}
+
+input:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+button {
+  width: 100%;
+  padding: 14px;
+  margin-top: 12px;
+  border: none;
+  border-radius: 10px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Menu */
+.menu-category {
+  margin: 18px 0 8px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--primary-dark);
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+
+.menu-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.menu-item-name {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.menu-item-desc {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 2px 0;
+  overflow-wrap: break-word;
+}
+
+.menu-item-price {
+  font-weight: 700;
+  color: var(--primary-dark);
+  font-size: 14px;
+  margin-top: 2px;
+}
+
+.menu-item.out {
+  opacity: 0.55;
+}
+
+.badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--danger);
+  border: 1px solid var(--danger);
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.stepper button {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  margin: 0;
+  border-radius: 50%;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+  background: var(--surface);
+  color: var(--primary);
+  border: 2px solid var(--primary);
+}
+
+.stepper .qty {
+  min-width: 20px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.btn-add {
+  width: auto;
+  padding: 8px 16px;
+  margin: 0;
+  border: 2px solid var(--primary);
+  border-radius: 20px;
+  background: var(--surface);
+  color: var(--primary);
+  font-size: 14px;
+}
+
+/* Cart bar */
+.cart-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 20px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.cart-summary span {
+  display: block;
+}
+
+.cart-total {
+  font-weight: 700;
+  font-size: 17px;
+  color: var(--primary-dark);
+}
+
+.cart-bar button {
+  width: auto;
+  padding: 12px 20px;
+  margin: 0;
+}
+
+/* Confirmation */
+.check {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  margin: 32px auto 8px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  font-size: 40px;
+}
+
+#confirmation {
+  text-align: center;
+}
+
+#confirmation .muted {
+  margin: 8px auto;
+  max-width: 320px;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}

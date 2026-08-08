@@ -1,4 +1,4 @@
-name: Build APKs
+name: Build & Deploy
 
 on:
   push:
@@ -7,8 +7,17 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
 jobs:
-  build:
+  build-apk:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -30,7 +39,6 @@ jobs:
         run: |
           if [ -n "$GOOGLE_SERVICES_JSON" ]; then
             echo "$GOOGLE_SERVICES_JSON" | base64 --decode > manager/google-services.json
-            cp manager/google-services.json customer/google-services.json
             echo "Using real Firebase config from the GOOGLE_SERVICES_JSON secret."
           else
             cat > manager/google-services.json <<'JSON'
@@ -59,35 +67,15 @@ jobs:
                     "other_platform_oauth_client": []
                   }
                 }
-              },
-              {
-                "client_info": {
-                  "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
-                  "android_client_info": {
-                    "package_name": "com.digimenu.customer"
-                  }
-                },
-                "oauth_client": [],
-                "api_key": [
-                  {
-                    "current_key": "AIzaSyAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                  }
-                ],
-                "services": {
-                  "appinvite_service": {
-                    "other_platform_oauth_client": []
-                  }
-                }
               }
             ]
           }
           JSON
-            cp manager/google-services.json customer/google-services.json
             echo "No GOOGLE_SERVICES_JSON secret set - using placeholder config (build-only, no live Firebase)."
           fi
 
-      - name: Build debug APKs
-        run: ./gradlew assembleDebug --stacktrace
+      - name: Build manager debug APK
+        run: ./gradlew :manager:assembleDebug --stacktrace
 
       - name: Upload manager APK
         uses: actions/upload-artifact@v4
@@ -95,8 +83,24 @@ jobs:
           name: digimenu-manager-apk
           path: manager/build/outputs/apk/debug/*.apk
 
-      - name: Upload customer APK
-        uses: actions/upload-artifact@v4
+  deploy-web:
+    runs-on: ubuntu-latest
+    needs: build-apk
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          name: digimenu-customer-apk
-          path: customer/build/outputs/apk/debug/*.apk
+          path: web
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
