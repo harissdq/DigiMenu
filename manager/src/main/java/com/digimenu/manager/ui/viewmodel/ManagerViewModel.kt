@@ -66,7 +66,7 @@ class ManagerViewModel @Inject constructor(
         }
     }
 
-    private fun refreshSession() {
+    private suspend fun refreshSession() {
         // Any single failure (e.g. a denied info read) must never crash login.
         runCatching { session.refresh() }
     }
