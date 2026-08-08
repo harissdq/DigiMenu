@@ -122,6 +122,33 @@ orders.
 To get the manager UID: sign in on the manager app, or look in
 *Authentication → Users* in the Firebase Console (the row's identifier).
 
+### Adding tenants from the CLI
+
+Manual console editing works, but for new tenants there is a one-command helper:
+
+```bash
+node tools/create-tenant.mjs <service-account.json> \
+    --uid <managerUID> --restaurant bistro-downtown --name "Bistro Downtown" \
+    --tables "Table_1,Table_2" --seed-demo-menu
+```
+
+It writes `managers/{uid}/restaurantId`, the restaurant's `info/name`, the
+legacy `managers` map, tables and (optionally) menu items, then prints the QR
+URLs. It needs no `npm install` (Node 18+ standard library only). To create the
+manager's Auth account too, add
+`--create-user --email owner@bistro.com --password secret --api-key <webApiKey>`.
+
+Get the inputs from the console:
+- **service account**: *Project settings → Service accounts → Generate new
+  private key*. This file can read/write the whole project — treat it like a
+  password, never commit it (`.gitignore` already ignores
+  `service-account*.json`).
+- **uid / web API key / database URL**: *Authentication → Users* and *Project
+  settings → Your apps* (the web app you registered). Pass `--database-url`
+  if your database is not in the default region.
+
+Run with `--dry-run` first to preview the exact paths it will write.
+
 ## 5. Verify end-to-end
 
 1. Manager app: sign in → top bar shows the restaurant name → menu shows the

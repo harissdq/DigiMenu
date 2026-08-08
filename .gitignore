@@ -13,3 +13,5 @@ build/
 google-services.json
 *.apk
 *.aab
+service-account*.json
+*-service-account.json

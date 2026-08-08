@@ -54,6 +54,7 @@ one Firebase Realtime Database.
 | `core/`                     | Shared Android library (models, Firebase repos, QR).  |
 | `web/`                      | Customer web app: `index.html`, `app.js`, `config.js`.|
 | `.github/workflows/`        | CI: builds the APK + deploys `web/` to GitHub Pages.  |
+| `tools/create-tenant.mjs`   | One-command CLI to add new restaurants/tenants.       |
 | `docs/ARCHITECTURE.md`      | Blueprint and data model.                             |
 | `docs/FIREBASE_SETUP.md`    | Firebase project, rules and seed instructions.        |
 
