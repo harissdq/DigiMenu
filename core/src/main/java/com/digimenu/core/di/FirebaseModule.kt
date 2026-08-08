@@ -1,5 +1,6 @@
 package com.digimenu.core.di
 
+import com.digimenu.core.firebase.FirebaseRefs
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import dagger.Module
@@ -16,7 +17,7 @@ object FirebaseModule {
     @Provides
     @Singleton
     fun provideDatabase(): FirebaseDatabase {
-        val db = FirebaseDatabase.getInstance()
+        val db = FirebaseDatabase.getInstance(FirebaseRefs.DATABASE_URL)
         runCatching { db.setPersistenceEnabled(true) }
         return db
     }

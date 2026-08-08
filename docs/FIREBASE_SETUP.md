@@ -23,6 +23,14 @@ rules, and the demo seed data.
 Enable **Realtime Database** in test mode first, then replace the rules with
 the production set below.
 
+> **Region gotcha:** if you create the database in a region other than
+> `us-central1` (the default), the database URL becomes region-specific, e.g.
+> `https://<project>-default-rtdb.<region>.firebasedatabase.app`. You must use
+> that exact URL in two places:
+> `FirebaseRefs.DATABASE_URL` in `core/.../firebase/FirebaseRefs.kt` (Android)
+> and `databaseURL` in `web/config.js` (web). The console shows the correct URL
+> at the top of the Realtime Database → Data tab.
+
 ### Rules
 
 ```json

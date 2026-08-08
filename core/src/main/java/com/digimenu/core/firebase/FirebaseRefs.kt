@@ -22,6 +22,19 @@ object FirebaseRefs {
 
     const val DEFAULT_RESTAURANT = "demo-restaurant"
 
+    /**
+     * Realtime Database URL for this project.
+     *
+     * Realtime Databases created outside the default (us-central1) region get a
+     * region-specific URL such as
+     * `https://<project>-default-rtdb.<region>.firebasedatabase.app`. The app
+     * must connect to that exact URL. Find it in the Firebase Console under
+     * Build → Realtime Database (the URL shown at the top of the Data tab), and
+     * update this constant if it differs from the value below.
+     */
+    const val DATABASE_URL =
+        "https://com-digimenu-manager-default-rtdb.asia-southeast1.firebasedatabase.app"
+
     fun restaurant(db: FirebaseDatabase, restaurantId: String = DEFAULT_RESTAURANT) =
         db.getReference("restaurants").child(restaurantId)
 

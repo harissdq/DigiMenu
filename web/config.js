@@ -5,12 +5,16 @@
 //
 // The web SDK config is public by design; security is enforced by the
 // Realtime Database rules, NOT by keeping this file secret.
+//
+// Note: the app.js script loads the compat SDKs (firebase-app-compat,
+// firebase-database-compat) directly from gstatic, so this file must stay a
+// plain script that only assigns window.DIGIMENU_FIREBASE_CONFIG.
 window.DIGIMENU_FIREBASE_CONFIG = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
-  projectId: "YOUR_PROJECT",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyCG-dRxSkkxX_nnpopCz7eb3Wq4E72Ei2E",
+  authDomain: "com-digimenu-manager.firebaseapp.com",
+  databaseURL: "https://com-digimenu-manager-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "com-digimenu-manager",
+  storageBucket: "com-digimenu-manager.firebasestorage.app",
+  messagingSenderId: "433694338658",
+  appId: "1:433694338658:web:56e969a3709dcec72eeb3b"
 };
