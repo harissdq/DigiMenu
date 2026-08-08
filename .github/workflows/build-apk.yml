@@ -34,54 +34,54 @@ jobs:
             echo "Using real Firebase config from the GOOGLE_SERVICES_JSON secret."
           else
             cat > manager/google-services.json <<'JSON'
-{
-  "project_info": {
-    "project_number": "000000000000",
-    "project_id": "digimenu-placeholder",
-    "storage_bucket": "digimenu-placeholder.appspot.com"
-  },
-  "client": [
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
-        "android_client_info": {
-          "package_name": "com.digimenu.manager"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
-        "android_client_info": {
-          "package_name": "com.digimenu.customer"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
-    }
-  ]
-}
-JSON
+          {
+            "project_info": {
+              "project_number": "000000000000",
+              "project_id": "digimenu-placeholder",
+              "storage_bucket": "digimenu-placeholder.appspot.com"
+            },
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
+                  "android_client_info": {
+                    "package_name": "com.digimenu.manager"
+                  }
+                },
+                "oauth_client": [],
+                "api_key": [
+                  {
+                    "current_key": "AIzaSyAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+                  }
+                ],
+                "services": {
+                  "appinvite_service": {
+                    "other_platform_oauth_client": []
+                  }
+                }
+              },
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
+                  "android_client_info": {
+                    "package_name": "com.digimenu.customer"
+                  }
+                },
+                "oauth_client": [],
+                "api_key": [
+                  {
+                    "current_key": "AIzaSyAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+                  }
+                ],
+                "services": {
+                  "appinvite_service": {
+                    "other_platform_oauth_client": []
+                  }
+                }
+              }
+            ]
+          }
+          JSON
             cp manager/google-services.json customer/google-services.json
             echo "No GOOGLE_SERVICES_JSON secret set - using placeholder config (build-only, no live Firebase)."
           fi
