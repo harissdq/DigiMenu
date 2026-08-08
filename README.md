@@ -61,6 +61,16 @@ Everything is powered by one Firebase Realtime Database.
 4. The order lands in Firebase instantly and the Manager app's Orders tab
    updates live (no refresh, no polling).
 
+## Demo mode (no Firebase setup)
+
+The customer page runs in **demo mode** whenever `web/config.js` still has the
+`YOUR_*` placeholders: it shows a sample menu, accepts orders into the browser's
+`localStorage` and shows a "DEMO MODE" banner. Open
+`https://harissdq.github.io/DigiMenu/?table=Table_1` to try the full
+scan → order flow. Once you paste a real Firebase web config into
+`web/config.js`, the page connects to your database and demo mode turns off
+automatically.
+
 ## QR payload format
 
 `TableQrCode.encode()` produces the menu page URL with the canonical table id:

@@ -71,6 +71,12 @@ The page lives in `web/` and is deployed automatically to
 2. Paste those values into `web/config.js` (replace the `YOUR_*` placeholders).
 3. Commit and push — the CI deploys the updated page.
 
+> **No config yet?** The page runs in **demo mode**: it uses a sample menu and
+> saves orders to `localStorage`, so the whole scan → order flow can be tested
+> immediately at `https://harissdq.github.io/DigiMenu/?table=Table_1`. A banner
+> tells you demo mode is active, and it switches off automatically once real
+> values are present in `web/config.js`.
+
 > The web SDK config is public by design. It only identifies your project;
 > access control comes entirely from the Realtime Database rules above.
 
