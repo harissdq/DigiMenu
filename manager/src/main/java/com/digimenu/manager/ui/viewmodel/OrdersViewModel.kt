@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.digimenu.core.data.OrderRepository
 import com.digimenu.core.data.RestaurantSession
 import com.digimenu.core.model.Order
+import com.digimenu.core.model.OrderStatus
 import com.digimenu.manager.notification.NotificationHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -48,11 +49,19 @@ class OrdersViewModel @Inject constructor(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    fun updateStatus(order: Order, status: String) {
+    fun updateStatus(order: Order, status: String, declineReason: String = "") {
+        // Guard against illegal transitions (e.g. a stale tap after the order
+        // already moved on) — the DB rules also enforce tenant access.
+        if (!OrderStatus.canTransition(order.status, status)) return
         viewModelScope.launch {
             val restaurantId = session.restaurantId.value ?: return@launch
             runCatching {
-                orderRepository.updateStatus(restaurantId = restaurantId, orderId = order.id, status = status)
+                orderRepository.updateStatus(
+                    restaurantId = restaurantId,
+                    orderId = order.id,
+                    status = status,
+                    declineReason = declineReason,
+                )
             }
         }
     }

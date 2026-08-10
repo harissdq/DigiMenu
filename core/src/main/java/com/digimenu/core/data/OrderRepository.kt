@@ -55,19 +55,33 @@ class OrderRepository @Inject constructor(
     ): String {
         val ref = FirebaseRefs.orders(db, restaurantId)
         val key = ref.push().key ?: error("Order push failed")
+        val now = System.currentTimeMillis()
         ref.child(key).setValue(
-            order.copy(id = key, createdAt = System.currentTimeMillis())
+            order.copy(id = key, createdAt = now, statusChangedAt = now)
         ).await()
         return key
     }
 
+    /**
+     * Applies a status transition. Writes the new [status] and its timestamp
+     * atomically so the customer tracker and the manager feed never see a
+     * status without a [Order.statusChangedAt]. A rejected order additionally
+     * stores [declineReason] for the customer.
+     */
     suspend fun updateStatus(
         orderId: String,
         status: String,
+        declineReason: String = "",
         restaurantId: String = FirebaseRefs.DEFAULT_RESTAURANT,
     ) {
         if (orderId.isBlank()) return
+        val updates = HashMap<String, Any>()
+        updates["status"] = status
+        updates["statusChangedAt"] = System.currentTimeMillis()
+        if (status == Order.STATUS_REJECTED) {
+            updates["declineReason"] = declineReason
+        }
         FirebaseRefs.orders(db, restaurantId).child(orderId)
-            .child("status").setValue(status).await()
+            .updateChildren(updates).await()
     }
 }

@@ -29,6 +29,10 @@ data class Order(
     var total: Double = 0.0,
     var status: String = STATUS_NEW,
     var createdAt: Long = 0L,
+    /** Epoch millis of the last status change. Written by [OrderStatus] transitions. */
+    var statusChangedAt: Long = 0L,
+    /** Set only when the order is rejected by the restaurant ([Order.STATUS_REJECTED]). */
+    var declineReason: String = "",
 ) {
     companion object {
         const val ORDER_TYPE_DINE_IN = "dine-in"
@@ -37,11 +41,14 @@ data class Order(
         const val TAKEAWAY_TABLE_LABEL = "Take Away"
 
         const val STATUS_NEW = "NEW"
+        const val STATUS_ACCEPTED = "ACCEPTED"
         const val STATUS_PREPARING = "PREPARING"
+        const val STATUS_READY = "READY"
         const val STATUS_DONE = "DONE"
         const val STATUS_CANCELLED = "CANCELLED"
+        const val STATUS_REJECTED = "REJECTED"
 
         fun visibleToManager(): List<String> =
-            listOf(STATUS_NEW, STATUS_PREPARING)
+            listOf(STATUS_NEW, STATUS_ACCEPTED, STATUS_PREPARING, STATUS_READY)
     }
 }

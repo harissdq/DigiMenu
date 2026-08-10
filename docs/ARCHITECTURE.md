@@ -96,7 +96,7 @@ restaurants/{restaurantId}/
   orders/{orderId}/
     { id, orderType, tableId, tableLabel, customerName, customerPhone,
       address, items: { itemId: { name, price, qty } },
-      total, status, createdAt }
+      total, status, createdAt, statusChangedAt, declineReason? }
   managers/{uid} = true         -> legacy uid map (also seeded)
 ```
 
@@ -110,7 +110,12 @@ Real-time propagation:
   immediately.
 - **Orders**: web checkout writes to `orders/`; the manager's `observeOrders()`
   gets the child the instant it lands.
-- **Status**: manager flips `status` (`NEW → PREPARING → DONE/CANCELLED`).
+- **Status**: the manager advances an order through a validated state machine
+  (`OrderStatus` in `core/.../model/OrderStatus.kt`):
+  `NEW → ACCEPTED → PREPARING → READY → DONE`, or off-path to
+  `REJECTED` (with `declineReason`) / `CANCELLED`. Every transition is a single
+  atomic write of `status` + `statusChangedAt`. The customer's confirmation page
+  subscribes to `orders/{orderId}` and renders the same timeline live.
 
 ## 5. QR → restaurant & table mapping
 
@@ -147,13 +152,16 @@ Pipeline:
 `QrCodesScreen` → `TableRepository.ensureTable(label)` + `QrCodeGenerator.generate(TableQrCode.encode(id))` → show/save bitmap.
 
 **Manager — incoming order**
-`OrdersScreen` → `OrderRepository.observeOrders()` → new `status=NEW` order card appears with items, qty, table.
+`OrdersScreen` → `OrderRepository.observeOrders()` → new `status=NEW` order card appears with items, qty, table. The manager **accepts** (→ `ACCEPTED`) or **rejects** (→ `REJECTED` with a reason), then moves it `PREPARING → READY → DONE`, or cancels it.
 
 **Customer — scan → order**
 Phone camera opens the QR URL → `web/app.js` resolves the restaurant id, verifies
 the table (or enters take-away mode) → lead capture (name + phone, plus a
-delivery address in take-away mode) → live menu + cart → `db.ref(.../orders).push().set(order)`
-→ the order appears on the manager dashboard instantly.
+delivery address in take-away mode) → live menu + cart →
+`db.ref(.../orders).push()` (key retained) → `.set(order)`. The order appears on
+the manager dashboard instantly, and the customer's confirmation page subscribes
+to `orders/{orderId}` to show the live status timeline (`Placed → Accepted →
+Preparing → Ready → Completed`, or the rejection reason).
 
 **Manager — tenant resolution**
 `ManagerViewModel.login()` → `RestaurantSession.refresh()` →
@@ -167,9 +175,12 @@ resolved restaurant name (`restaurants/{id}/info/name`).
 
 - Realtime Database rules: `managers/{uid}` readable only by that user; manager
   writes to `info`/`menu`/`tables`/`orders` gated on
-  `managers/{uid}/restaurantId == $restaurantId`; `orders/` writeable by anyone
-  (anonymous customers), readable only by managers; `menu`/`tables`/`info`
-  readable by all.
+  `managers/{uid}/restaurantId == $restaurantId`; `orders/` readable only by
+  managers, writable by **anyone only to create** (`!data.exists()`), with the
+  payload required to carry a `tableId`; `menu`/`tables`/`info` readable by all.
+  Only the tiny `status` / `statusChangedAt` / `declineReason` subfields of an
+  order are publicly readable (so a customer can follow their own order by its
+  unguessable push key) — the rest of an order stays manager-only.
 - The QR payload id is only the *key* — never embed prices or customer data in a QR.
 - The web page never authenticates a customer; the **rules** are the security
   boundary for public writes.

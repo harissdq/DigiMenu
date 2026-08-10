@@ -11,6 +11,21 @@
   var RESTAURANT_ID = "demo-restaurant"; // tenant id, overridden from ?restaurant=
   var IS_TAKEAWAY = false; // set from ?takeaway=1 (public take-away QR)
   var STATUS_NEW = "NEW";
+  var STATUS_ACCEPTED = "ACCEPTED";
+  var STATUS_PREPARING = "PREPARING";
+  var STATUS_READY = "READY";
+  var STATUS_DONE = "DONE";
+  var STATUS_CANCELLED = "CANCELLED";
+  var STATUS_REJECTED = "REJECTED";
+
+  // Customer-facing happy path; the current step is highlighted by status.
+  var ORDER_TRACK_STEPS = [
+    { key: STATUS_NEW, label: "Placed" },
+    { key: STATUS_ACCEPTED, label: "Accepted" },
+    { key: STATUS_PREPARING, label: "Preparing" },
+    { key: STATUS_READY, label: "Ready" },
+    { key: STATUS_DONE, label: "Completed" }
+  ];
 
   var CONFIG = window.DIGIMENU_FIREBASE_CONFIG || {};
   var IS_DEMO =
@@ -356,7 +371,7 @@
       createdAt: Date.now()
     };
 
-    var done = function () {
+    var done = function (order) {
       $("confirm-table").textContent = tableLabel;
       var confirmText = "Order for " + lead.name + " (" + lead.phone + ")";
       if (IS_TAKEAWAY) confirmText += " \u2014 deliver to: " + lead.address;
@@ -364,6 +379,7 @@
       cart = {};
       refreshCart();
       show("confirmation");
+      startTracking(order);
       button.disabled = false;
       button.textContent = "Place order";
     };
@@ -375,18 +391,125 @@
           history.push(order);
           localStorage.setItem("digimenu_demo_orders", JSON.stringify(history));
         } catch (e) { /* storage may be unavailable; still confirm */ }
-        done();
+        done(order);
       }, 600);
       return;
     }
 
-    db.ref("restaurants/" + RESTAURANT_ID + "/orders").push().set(order)
-      .then(done)
+    // push() first so we own the key: the customer keeps it to follow their
+    // order's live status on the confirmation screen.
+    var newRef = db.ref("restaurants/" + RESTAURANT_ID + "/orders").push();
+    order.id = newRef.key;
+    newRef.set(order)
+      .then(function () { done(order); })
       .catch(function (err) {
         button.disabled = false;
         button.textContent = "Place order";
         alert("Order failed: " + err.message);
       });
+  }
+
+  /* ---------- live order status (confirmation screen) ---------- */
+
+  // The full order node is manager/admin-only, so the tracker reads the two
+  // public status fields individually (rules expose only those). Tracking works
+  // because the order key is the (effectively unguessable) push id.
+  var trackingRefs = [];
+
+  function startTracking(order) {
+    if (IS_DEMO) {
+      renderOrderStatus(order);
+      return;
+    }
+    stopTracking();
+    var statusRef = db.ref("restaurants/" + RESTAURANT_ID + "/orders/" + order.id + "/status");
+    var reasonRef = db.ref("restaurants/" + RESTAURANT_ID + "/orders/" + order.id + "/declineReason");
+
+    var render = function () {
+      statusRef.once("value").then(function (snap) {
+        var status = snap.val() || STATUS_NEW;
+        return reasonRef.once("value").then(function (reasonSnap) {
+          renderOrderStatus({ status: status, declineReason: reasonSnap.val() || "" });
+        });
+      });
+    };
+
+    statusRef.on("value", render);
+    reasonRef.on("value", render);
+    trackingRefs.push({ ref: statusRef, cb: render });
+    trackingRefs.push({ ref: reasonRef, cb: render });
+  }
+
+  function stopTracking() {
+    for (var i = 0; i < trackingRefs.length; i++) {
+      trackingRefs[i].ref.off("value", trackingRefs[i].cb);
+    }
+    trackingRefs = [];
+  }
+
+  function renderOrderStatus(order) {
+    var container = $("order-status");
+    container.innerHTML = "";
+
+    if (order.status === STATUS_REJECTED) {
+      var rejected = document.createElement("div");
+      rejected.className = "status-alert";
+      var rejectedTitle = document.createElement("div");
+      rejectedTitle.className = "status-alert-title";
+      rejectedTitle.textContent = "Order rejected";
+      rejected.appendChild(rejectedTitle);
+      rejected.appendChild(document.createTextNode(
+        order.declineReason ? "Reason: " + order.declineReason : "Please contact the restaurant."
+      ));
+      container.appendChild(rejected);
+      return;
+    }
+
+    if (order.status === STATUS_CANCELLED) {
+      var cancelled = document.createElement("div");
+      cancelled.className = "status-alert";
+      var cancelledTitle = document.createElement("div");
+      cancelledTitle.className = "status-alert-title";
+      cancelledTitle.textContent = "Order cancelled";
+      cancelled.appendChild(cancelledTitle);
+      cancelled.appendChild(document.createTextNode("Please contact the restaurant."));
+      container.appendChild(cancelled);
+      return;
+    }
+
+    var currentIndex = -1;
+    for (var i = 0; i < ORDER_TRACK_STEPS.length; i++) {
+      if (ORDER_TRACK_STEPS[i].key === order.status) currentIndex = i;
+    }
+    if (currentIndex === -1) currentIndex = 0;
+
+    var steps = document.createElement("div");
+    steps.className = "status-steps";
+    ORDER_TRACK_STEPS.forEach(function (step, i) {
+      var el = document.createElement("div");
+      el.className = "status-step";
+      if (i < currentIndex) el.classList.add("done");
+      if (i === currentIndex) el.classList.add("current");
+
+      var dot = document.createElement("div");
+      dot.className = "status-dot";
+      dot.textContent = i < currentIndex ? "\u2713" : String(i + 1);
+
+      var label = document.createElement("div");
+      label.className = "status-label";
+      label.textContent = step.label;
+
+      el.appendChild(dot);
+      el.appendChild(label);
+      steps.appendChild(el);
+    });
+    container.appendChild(steps);
+
+    var note = document.createElement("p");
+    note.className = "muted";
+    note.textContent =
+      "Keep this page open — it updates automatically as the restaurant prepares your order.";
+    container.appendChild(note);
   }
 
   /* ---------- connectivity banner ---------- */

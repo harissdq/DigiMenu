@@ -67,7 +67,16 @@ together.
         "orders": {
           "$orderId": {
             ".read": "auth != null && (root.child('managers').child(auth.uid).child('restaurantId').val() == $restaurantId || root.child('restaurants').child($restaurantId).child('managers').child(auth.uid).val() == true || auth.token.email == 'haris.sdq@gmail.com')",
-            ".write": "(newData.exists() && newData.child('tableId').val() != null) || (auth != null && (root.child('managers').child(auth.uid).child('restaurantId').val() == $restaurantId || root.child('restaurants').child($restaurantId).child('managers').child(auth.uid).val() == true || auth.token.email == 'haris.sdq@gmail.com'))"
+            ".write": "(!data.exists() && newData.exists() && newData.child('tableId').val() != null) || (auth != null && (root.child('managers').child(auth.uid).child('restaurantId').val() == $restaurantId || root.child('restaurants').child($restaurantId).child('managers').child(auth.uid).val() == true || auth.token.email == 'haris.sdq@gmail.com'))",
+            "status": {
+              ".read": true
+            },
+            "statusChangedAt": {
+              ".read": true
+            },
+            "declineReason": {
+              ".read": true
+            }
           }
         },
         "managers": {
@@ -87,11 +96,14 @@ together.
 > the admin email, so each account only ever manages its own restaurant.
 >
 > `orders` is writable by **anyone** placing an order (dine-in or take-away)
-> without an account — but only if the payload carries a `tableId` (take-away
-> orders use the literal `"TAKEAWAY"`). The restaurant's own managers can also
-> write an order (e.g. to update its status), gated by the same tenant check as
-> the other nodes. Reads are manager/admin-only, so customers never see other
-> people's orders. For stricter control, generate a short-lived signed token
+> without an account — but only to **create** one (`!data.exists()`), only if the
+> payload carries a `tableId` (take-away orders use the literal `"TAKEAWAY"`).
+> Existing orders can never be modified by anonymous clients (previously a
+> customer could overwrite an order as long as it kept a `tableId`). The
+> restaurant's own managers can also write an order (e.g. to update its status,
+> optionally adding `statusChangedAt`/`declineReason`), gated by the same tenant
+> check as the other nodes. Reads are manager/admin-only, so customers never see
+> other people's orders. For stricter control, generate a short-lived signed token
 > per scan and validate it server-side (out of scope for the boilerplate).
 
 **Publishing the rules.** The exact JSON above is also committed as
@@ -199,4 +211,7 @@ tab (removes the tenant, its data, and unlinks its managers); the admin-only
    `https://harissdq.github.io/DigiMenu/?restaurant=demo-restaurant&takeaway=1`
    → enter name, phone **and delivery address** → order.
 4. Manager app: *Orders* tab shows the new order instantly (take-away orders
-   show "Take Away" and the delivery address).
+   show "Take Away" and the delivery address). **Accept** it (moves to *Active*
+   as `ACCEPTED`), then *Start preparing* → *Ready* → *Mark done*. The
+   customer's confirmation page follows the same timeline live; a **Reject**
+   (with a reason) shows the reason instead.
