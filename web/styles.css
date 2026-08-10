@@ -163,6 +163,15 @@ button:disabled {
   min-width: 0;
 }
 
+.menu-item-photo {
+  width: 64px;
+  height: 64px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--bg);
+}
+
 .menu-item-name {
   font-weight: 600;
   font-size: 16px;

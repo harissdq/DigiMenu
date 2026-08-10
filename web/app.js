@@ -194,19 +194,19 @@
           description: v.description || "",
           price: Number(v.price) || 0,
           category: v.category || "Main",
-          available: v.available !== false
+          available: v.available !== false,
+          photo: v.photo || ""
         });
       }
     });
 
-    var available = items.filter(function (i) { return i.available; });
-    $("menu-empty").classList.toggle("hidden", available.length > 0);
+    $("menu-empty").classList.toggle("hidden", items.length > 0);
 
     var container = $("menu-list");
     container.innerHTML = "";
 
     var byCategory = {};
-    available.forEach(function (item) {
+    items.forEach(function (item) {
       (byCategory[item.category] = byCategory[item.category] || []).push(item);
     });
 
@@ -216,16 +216,34 @@
       heading.textContent = category;
       container.appendChild(heading);
 
+      // Out-of-stock items stay visible (dimmed, with a badge, no Add button)
+      // so customers can see what is normally on the menu.
       byCategory[category].forEach(function (item) {
         container.appendChild(buildMenuItem(item));
       });
     });
   }
 
+  function itemPhotoSrc(item) {
+    if (!item.photo) return null;
+    if (/^data:image\//.test(item.photo)) return item.photo;
+    // The manager stores the photo as raw JPEG base64 (no data: prefix).
+    return "data:image/jpeg;base64," + item.photo;
+  }
+
   function buildMenuItem(item) {
     var card = document.createElement("div");
-    card.className = "menu-item";
+    card.className = "menu-item" + (item.available ? "" : " out");
     card.id = "item-" + item.id;
+
+    var photoSrc = itemPhotoSrc(item);
+    if (photoSrc) {
+      var photo = document.createElement("img");
+      photo.className = "menu-item-photo";
+      photo.alt = item.name;
+      photo.src = photoSrc;
+      card.appendChild(photo);
+    }
 
     var info = document.createElement("div");
     info.className = "menu-item-info";

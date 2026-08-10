@@ -90,7 +90,7 @@ managers/{uid}/
 restaurants/{restaurantId}/
   info/name                     -> RestaurantInfo
   menu/{itemId}/
-    { id, name, description, price, category, available, updatedAt }
+    { id, name, description, price, category, available, photo, updatedAt }
   tables/{tableId}/
     { id, label, createdAt }
   orders/{orderId}/
