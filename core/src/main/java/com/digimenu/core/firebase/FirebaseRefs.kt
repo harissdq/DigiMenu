@@ -17,6 +17,7 @@ import com.google.firebase.database.FirebaseDatabase
  *     info/name                  -> RestaurantInfo
  *     menu/{itemId}/             -> MenuItem
  *     tables/{tableId}/          -> TableSeat
+ *     sessions/{tableId}/        -> Session (occupancy + bill)
  *     orders/{orderId}/          -> Order
  *     managers/{uid}/true        -> uid of an authorised manager
  */
@@ -61,6 +62,10 @@ object FirebaseRefs {
 
     fun tables(db: FirebaseDatabase, restaurantId: String = DEFAULT_RESTAURANT) =
         restaurant(db, restaurantId).child("tables")
+
+    /** Occupancy + bill per table (manager-only read/write). */
+    fun sessions(db: FirebaseDatabase, restaurantId: String = DEFAULT_RESTAURANT) =
+        restaurant(db, restaurantId).child("sessions")
 
     fun orders(db: FirebaseDatabase, restaurantId: String = DEFAULT_RESTAURANT) =
         restaurant(db, restaurantId).child("orders")

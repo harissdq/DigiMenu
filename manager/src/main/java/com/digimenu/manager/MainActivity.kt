@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.TableRestaurant
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -36,6 +37,7 @@ import com.digimenu.manager.ui.screens.LoginScreen
 import com.digimenu.manager.ui.screens.MenuScreen
 import com.digimenu.manager.ui.screens.OrdersScreen
 import com.digimenu.manager.ui.screens.QrCodesScreen
+import com.digimenu.manager.ui.screens.TablesScreen
 import com.digimenu.manager.ui.theme.DigiMenuTheme
 import com.digimenu.manager.ui.viewmodel.ManagerViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -67,6 +69,7 @@ private enum class ManagerTab(val label: String, val icon: ImageVector) {
     Menu("Menu", Icons.Filled.Restaurant),
     QrCodes("QR Codes", Icons.Filled.QrCode2),
     Orders("Orders", Icons.Filled.ShoppingCart),
+    Tables("Tables", Icons.Filled.TableRestaurant),
     Admin("Admin", Icons.Filled.Settings),
 }
 
@@ -125,6 +128,7 @@ private fun ManagerScaffold(viewModel: ManagerViewModel) {
                 ManagerTab.Menu -> MenuScreen()
                 ManagerTab.QrCodes -> QrCodesScreen()
                 ManagerTab.Orders -> OrdersScreen()
+                ManagerTab.Tables -> TablesScreen()
                 ManagerTab.Admin -> AdminScreen()
             }
         }

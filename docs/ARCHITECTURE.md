@@ -93,6 +93,9 @@ restaurants/{restaurantId}/
     { id, name, description, price, category, available, photo, updatedAt }
   tables/{tableId}/
     { id, label, createdAt }
+  sessions/{sessionId}/
+    { id, tableId, status: OPEN|CLOSED, openedAt, closedAt,
+      orders: { orderId: true }, paid, total }
   orders/{orderId}/
     { id, orderType, tableId, tableLabel, customerName, customerPhone,
       address, items: { itemId: { name, price, qty } },
@@ -102,6 +105,15 @@ restaurants/{restaurantId}/
 
 `orderType` is `dine-in` or `takeaway`. Take-away orders use the literal
 `tableId` value `"TAKEAWAY"` and carry the customer's `address`.
+
+**Table sessions & billing.** Every dine-in order is linked to its table's
+session (`sessions/{sessionId}`, push-keyed so each table keeps its full
+history), which the manager app opens automatically when the first order for the
+table arrives (`SessionRepository.ensureOpen`) and closes when the guests pay. A
+closed-but-unpaid session is an open bill (the "Tables" screen shows its live
+total and lets the manager settle it); marking it paid archives it. The bill
+total is the sum of the session's orders excluding `CANCELLED`/`REJECTED`.
+Take-away orders never get sessions.
 
 Real-time propagation:
 - **Menu**: manager's `MenuRepository.observeMenu()` and the web page's
@@ -154,6 +166,12 @@ Pipeline:
 **Manager — incoming order**
 `OrdersScreen` → `OrderRepository.observeOrders()` → new `status=NEW` order card appears with items, qty, table. The manager **accepts** (→ `ACCEPTED`) or **rejects** (→ `REJECTED` with a reason), then moves it `PREPARING → READY → DONE`, or cancels it.
 
+**Manager — table session & bill**
+`OrdersViewModel` links each active dine-in order to its table's session
+(`SessionRepository.ensureOpen`). `TablesScreen` combines `tables` + `sessions` +
+`orders` live: a table shows *Free*, *Seated since HH:mm*, or a settled bill.
+**Close & bill** snapshots the total into the session; **Mark paid** archives it.
+
 **Customer — scan → order**
 Phone camera opens the QR URL → `web/app.js` resolves the restaurant id, verifies
 the table (or enters take-away mode) → lead capture (name + phone, plus a
@@ -174,10 +192,11 @@ resolved restaurant name (`restaurants/{id}/info/name`).
 ## 7. Security notes (production hardening)
 
 - Realtime Database rules: `managers/{uid}` readable only by that user; manager
-  writes to `info`/`menu`/`tables`/`orders` gated on
+  writes to `info`/`menu`/`tables`/`sessions`/`orders` gated on
   `managers/{uid}/restaurantId == $restaurantId`; `orders/` readable only by
   managers, writable by **anyone only to create** (`!data.exists()`), with the
   payload required to carry a `tableId`; `menu`/`tables`/`info` readable by all.
+  `sessions` is manager-only on both read and write (customers never touch it).
   Only the tiny `status` / `statusChangedAt` / `declineReason` subfields of an
   order are publicly readable (so a customer can follow their own order by its
   unguessable push key) — the rest of an order stays manager-only.
