@@ -26,8 +26,8 @@ data class ReportStats(
     )
 
     companion object {
-        val TERMINAL_STATUSES = setOf(
-            Order.STATUS_DONE,
+        /** Statuses that never produce revenue (a done order most certainly does). */
+        val NON_REVENUE_STATUSES = setOf(
             Order.STATUS_CANCELLED,
             Order.STATUS_REJECTED,
         )
@@ -49,7 +49,7 @@ data class ReportStats(
             for (order in orders) {
                 if (order.createdAt < fromMillis) continue
                 total++
-                val terminal = order.status in TERMINAL_STATUSES
+                val terminal = order.status in NON_REVENUE_STATUSES
                 val countsTowardsRevenue = !terminal
                 if (order.status == Order.STATUS_DONE) completed++
                 if (order.status == Order.STATUS_CANCELLED || order.status == Order.STATUS_REJECTED) {
