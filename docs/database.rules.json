@@ -10,6 +10,7 @@
       ".read": "auth.token.email == 'haris.sdq@gmail.com'",
       "$restaurantId": {
         ".read": "auth != null && (root.child('managers').child(auth.uid).child('restaurantId').val() == $restaurantId || root.child('restaurants').child($restaurantId).child('managers').child(auth.uid).val() == true || auth.token.email == 'haris.sdq@gmail.com')",
+        ".write": "auth.token.email == 'haris.sdq@gmail.com'",
         "info": {
           ".read": true,
           ".write": "auth != null && (root.child('managers').child(auth.uid).child('restaurantId').val() == $restaurantId || root.child('restaurants').child($restaurantId).child('managers').child(auth.uid).val() == true || auth.token.email == 'haris.sdq@gmail.com')"

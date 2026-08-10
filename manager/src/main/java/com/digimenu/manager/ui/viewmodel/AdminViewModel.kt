@@ -85,6 +85,21 @@ class AdminViewModel @Inject constructor(
         }
     }
 
+    fun deleteRestaurant(id: String) {
+        if (_busy.value) return
+        viewModelScope.launch {
+            _busy.value = true
+            _message.value = null
+            runCatching { adminRepository.deleteRestaurant(id) }
+                .onSuccess {
+                    _restaurants.value = _restaurants.value.filterNot { it.id == id }
+                    _message.value = "Deleted restaurant."
+                }
+                .onFailure { _message.value = "Delete failed: ${it.message}" }
+            _busy.value = false
+        }
+    }
+
     fun clearMessage() {
         _message.value = null
     }

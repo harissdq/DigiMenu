@@ -51,6 +51,7 @@ together.
       ".read": "auth.token.email == 'haris.sdq@gmail.com'",
       "$restaurantId": {
         ".read": "auth != null && (root.child('managers').child(auth.uid).child('restaurantId').val() == $restaurantId || root.child('restaurants').child($restaurantId).child('managers').child(auth.uid).val() == true || auth.token.email == 'haris.sdq@gmail.com')",
+        ".write": "auth.token.email == 'haris.sdq@gmail.com'",
         "info": {
           ".read": true,
           ".write": "auth != null && (root.child('managers').child(auth.uid).child('restaurantId').val() == $restaurantId || root.child('restaurants').child($restaurantId).child('managers').child(auth.uid).val() == true || auth.token.email == 'haris.sdq@gmail.com')"
@@ -182,7 +183,9 @@ The main admin account (`haris.sdq@gmail.com`) sees an extra **Admin** tab when
 it signs in. From there it can create a restaurant (name + tables) and either
 become its manager or create + link a new manager account (email + password) —
 no console work needed. Creating a new restaurant as your own manager switches
-the app to it immediately.
+the app to it immediately. Restaurants can also be **deleted** from the same
+tab (removes the tenant, its data, and unlinks its managers); the admin-only
+`.write` rule on `restaurants/$restaurantId` makes the delete work.
 
 ## 5. Verify end-to-end
 

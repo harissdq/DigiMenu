@@ -28,8 +28,15 @@ class OrderRepository @Inject constructor(
             val ref = FirebaseRefs.orders(db, restaurantId)
             val listener = object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    val orders = snapshot.children.mapNotNull { it.getValue(Order::class.java) }
-                        .sortedByDescending { it.createdAt }
+                    val orders = snapshot.children.mapNotNull { snap ->
+                        // The customer web app writes orders via push() without an
+                        // `id` field, so derive it from the node key. Without this,
+                        // every order has id="" which makes LazyColumn keys collide
+                        // (crash) and status updates write to the wrong path.
+                        snap.getValue(Order::class.java)?.also { order ->
+                            order.id = snap.key ?: order.id
+                        }
+                    }.sortedByDescending { it.createdAt }
                     trySend(orders)
                 }
 
@@ -59,6 +66,7 @@ class OrderRepository @Inject constructor(
         status: String,
         restaurantId: String = FirebaseRefs.DEFAULT_RESTAURANT,
     ) {
+        if (orderId.isBlank()) return
         FirebaseRefs.orders(db, restaurantId).child(orderId)
             .child("status").setValue(status).await()
     }

@@ -11,12 +11,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -27,6 +33,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.digimenu.core.model.RestaurantInfo
+import com.digimenu.manager.ui.theme.DangerRed
 import com.digimenu.manager.ui.theme.TextSecondary
 import com.digimenu.manager.ui.viewmodel.AdminViewModel
 
@@ -40,6 +48,7 @@ fun AdminScreen(viewModel: AdminViewModel = hiltViewModel()) {
     var tables by remember { mutableStateOf("") }
     var managerEmail by remember { mutableStateOf("") }
     var managerPassword by remember { mutableStateOf("") }
+    var pendingDelete by remember { mutableStateOf<RestaurantInfo?>(null) }
 
     Column(
         modifier = Modifier
@@ -140,15 +149,48 @@ fun AdminScreen(viewModel: AdminViewModel = hiltViewModel()) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 4.dp),
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
                 ) {
                     Text(
                         text = "${restaurant.name}  (${restaurant.id})",
                         style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.weight(1f),
                     )
+                    IconButton(onClick = { pendingDelete = restaurant }) {
+                        Icon(
+                            Icons.Filled.Delete,
+                            contentDescription = "Delete ${restaurant.name}",
+                            tint = DangerRed,
+                        )
+                    }
                 }
             }
         }
 
         Spacer(Modifier.height(8.dp))
+    }
+
+    pendingDelete?.let { restaurant ->
+        AlertDialog(
+            onDismissRequest = { pendingDelete = null },
+            title = { Text("Delete ${restaurant.name}?") },
+            text = {
+                Text(
+                    "This permanently removes the restaurant, its menu, tables and " +
+                        "orders, and unlinks its managers. This cannot be undone.",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingDelete = null
+                    viewModel.deleteRestaurant(restaurant.id)
+                }) {
+                    Text("Delete", color = DangerRed)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDelete = null }) { Text("Cancel") }
+            },
+        )
     }
 }

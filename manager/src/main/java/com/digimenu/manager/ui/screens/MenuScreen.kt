@@ -1,20 +1,31 @@
 package com.digimenu.manager.ui.screens
 
+import android.graphics.Bitmap
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -22,6 +33,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -33,6 +45,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -41,6 +55,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.digimenu.core.model.MenuItem
 import com.digimenu.manager.ui.theme.DangerRed
 import com.digimenu.manager.ui.theme.TextSecondary
+import com.digimenu.manager.ui.util.base64ToBitmap
 import com.digimenu.manager.ui.viewmodel.MenuForm
 import com.digimenu.manager.ui.viewmodel.MenuViewModel
 
@@ -116,6 +131,8 @@ fun MenuScreen(viewModel: MenuViewModel = hiltViewModel()) {
             onDescription = viewModel::onDescriptionChange,
             onPrice = viewModel::onPriceChange,
             onCategory = viewModel::onCategoryChange,
+            onPhotoPicked = viewModel::onPhotoPicked,
+            onPhotoRemove = viewModel::onPhotoRemove,
             onSave = {
                 viewModel.save()
                 showEditor = false
@@ -132,6 +149,7 @@ private fun MenuItemCard(
     onDelete: () -> Unit,
     onToggle: () -> Unit,
 ) {
+    val photoBitmap = remember(item.photo) { base64ToBitmap(item.photo, maxDim = 256) }
     Card(Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
@@ -139,6 +157,25 @@ private fun MenuItemCard(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            if (photoBitmap != null) {
+                Box(
+                    Modifier
+                        .size(64.dp)
+                        .padding(end = 12.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Image(
+                        bitmap = photoBitmap.asImageBitmap(),
+                        contentDescription = item.name,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                shape = RoundedCornerShape(10.dp),
+                            ),
+                    )
+                }
+            }
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(item.name, style = MaterialTheme.typography.titleMedium)
@@ -186,9 +223,24 @@ private fun MenuEditorDialog(
     onDescription: (String) -> Unit,
     onPrice: (String) -> Unit,
     onCategory: (String) -> Unit,
+    onPhotoPicked: (ByteArray) -> Unit,
+    onPhotoRemove: () -> Unit,
     onSave: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val context = LocalContext.current
+    val photoPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            runCatching {
+                context.contentResolver.openInputStream(uri)?.use { onPhotoPicked(it.readBytes()) }
+            }
+        }
+    }
+
+    val photoBitmap = remember(form.photo) { base64ToBitmap(form.photo, maxDim = 512) }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (isEditing) "Edit item" else "Add item") },
@@ -222,6 +274,35 @@ private fun MenuEditorDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (photoBitmap != null) {
+                        Image(
+                            bitmap = photoBitmap.asImageBitmap(),
+                            contentDescription = "Dish photo",
+                            modifier = Modifier
+                                .size(72.dp)
+                                .background(
+                                    color = MaterialTheme.colorScheme.surfaceVariant,
+                                    shape = RoundedCornerShape(10.dp),
+                                ),
+                        )
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    Button(onClick = {
+                        photoPicker.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        )
+                    }) {
+                        Icon(Icons.Filled.PhotoCamera, contentDescription = null)
+                        Spacer(Modifier.width(6.dp))
+                        Text(if (form.photo.isBlank()) "Choose photo" else "Change photo")
+                    }
+                    if (form.photo.isNotBlank()) {
+                        Spacer(Modifier.width(8.dp))
+                        OutlinedButton(onClick = onPhotoRemove) { Text("Remove") }
+                    }
+                }
             }
         },
         confirmButton = {

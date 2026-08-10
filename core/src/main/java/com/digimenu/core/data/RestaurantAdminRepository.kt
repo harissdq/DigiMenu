@@ -81,6 +81,24 @@ class RestaurantAdminRepository @Inject constructor(
         return RestaurantInfo(id = id, name = cleanName)
     }
 
+    /** Deletes a tenant and unlinks all of its managers (admin only). */
+    suspend fun deleteRestaurant(restaurantId: String) {
+        auth.currentUser ?: error("Not signed in.")
+
+        val managerUids = runCatching {
+            FirebaseRefs.managers(db, restaurantId).get().await()
+                .children.mapNotNull { it.key }
+        }.getOrElse { emptyList() }
+
+        val updates = HashMap<String, Any?>()
+        updates["restaurants/$restaurantId"] = null
+        managerUids.forEach { uid ->
+            updates["managers/$uid/restaurantId"] = null
+        }
+
+        db.getReference().updateChildren(updates).await()
+    }
+
     private suspend fun uniqueRestaurantId(name: String): String {
         val base = slugify(name).ifBlank { "restaurant" }
         val existing = listRestaurants().map { it.id }.toSet()

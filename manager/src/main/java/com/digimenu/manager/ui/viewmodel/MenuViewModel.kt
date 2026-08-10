@@ -22,6 +22,7 @@ data class MenuForm(
     val description: String = "",
     val price: String = "",
     val category: String = "Main",
+    val photo: String = "",
 )
 
 @HiltViewModel
@@ -53,6 +54,22 @@ class MenuViewModel @Inject constructor(
     fun onPriceChange(value: String) = _form.update { it.copy(price = value.filter { c -> c.isDigit() || c == '.' }) }
     fun onCategoryChange(value: String) = _form.update { it.copy(category = value) }
 
+    /** Compresses and stores the picked dish photo (base64) for later saves. */
+    fun onPhotoPicked(bytes: ByteArray) {
+        viewModelScope.launch {
+            val compressed = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                com.digimenu.manager.ui.util.compressPhoto(bytes)
+            }
+            val base64 = compressed?.let {
+                android.util.Base64.encodeToString(it, android.util.Base64.DEFAULT)
+            }
+            _form.update { it.copy(photo = base64.orEmpty()) }
+            _message.value = if (base64 == null) "Could not read that image." else "Photo attached."
+        }
+    }
+
+    fun onPhotoRemove() = _form.update { it.copy(photo = "") }
+
     fun startAdd() {
         _form.value = MenuForm()
         _editingId.value = null
@@ -64,6 +81,7 @@ class MenuViewModel @Inject constructor(
             description = item.description,
             price = "%.2f".format(item.price),
             category = item.category,
+            photo = item.photo,
         )
         _editingId.value = item.id
     }
@@ -92,6 +110,7 @@ class MenuViewModel @Inject constructor(
                             description = form.description.trim(),
                             price = price,
                             category = form.category.trim().ifBlank { "Main" },
+                            photo = form.photo,
                         )
                     )
                 } else {
@@ -105,6 +124,7 @@ class MenuViewModel @Inject constructor(
                             price = price,
                             category = form.category.trim().ifBlank { "Main" },
                             available = current?.available ?: true,
+                            photo = form.photo,
                         )
                     )
                 }

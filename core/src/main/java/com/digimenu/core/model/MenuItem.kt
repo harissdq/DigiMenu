@@ -16,6 +16,7 @@ data class MenuItem(
     var price: Double = 0.0,
     var category: String = "Main",
     var available: Boolean = true,
+    var photo: String = "",
     var updatedAt: Long = 0L,
 ) {
     /** Compact representation for writes (avoids sending null/default noise). */
@@ -27,6 +28,7 @@ data class MenuItem(
         "price" to price,
         "category" to category,
         "available" to available,
+        "photo" to photo,
         "updatedAt" to updatedAt,
     )
 }
