@@ -65,7 +65,6 @@ class RestaurantAdminRepository @Inject constructor(
         val updates = HashMap<String, Any>()
         updates["restaurants/$id/info"] = mapOf("name" to cleanName)
         updates["restaurants/$id/managers/$managerUid"] = true
-        updates["restaurants/$id/orders"] = emptyMap<String, Any>()
         val labels = tableLabels.map { it.trim() }.filter { it.isNotEmpty() }
             .ifEmpty { listOf("Table_1", "Table_2") }
         labels.forEach { label ->
@@ -104,28 +103,46 @@ class RestaurantAdminRepository @Inject constructor(
     private suspend fun createManagerAccount(email: String, password: String): String {
         val apiKey = FirebaseApp.getInstance().options.apiKey
         return withContext(Dispatchers.IO) {
-            val url = URL("https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=$apiKey")
-            val conn = url.openConnection() as HttpURLConnection
-            try {
-                conn.requestMethod = "POST"
-                conn.doOutput = true
-                conn.setRequestProperty("Content-Type", "application/json")
-                val body = JSONObject()
-                    .put("email", email)
-                    .put("password", password)
-                    .put("returnSecureToken", true)
-                conn.outputStream.use { it.write(body.toString().toByteArray()) }
-                val code = conn.responseCode
-                val stream = if (code in 200..299) conn.inputStream else conn.errorStream
-                val text = stream?.bufferedReader()?.use { it.readText() } ?: ""
-                val json = JSONObject(text)
-                if (code !in 200..299) {
-                    error("Could not create manager account: ${json.optString("error", text)}")
-                }
-                json.getString("localId")
-            } finally {
-                conn.disconnect()
+            val body = JSONObject()
+                .put("email", email)
+                .put("password", password)
+                .put("returnSecureToken", true)
+
+            val signUp = identityToolkitCall("accounts:signUp", apiKey, body)
+            if (signUp.has("localId")) return@withContext signUp.getString("localId")
+
+            // The email already exists (e.g. an earlier creation failed after the
+            // Auth account was created). Recover the uid by signing in with the
+            // same credentials and link that account to the new restaurant.
+            val signIn = identityToolkitCall("accounts:signInWithPassword", apiKey, body)
+            if (signIn.has("localId")) {
+                return@withContext signIn.getString("localId")
             }
+            error(
+                "A manager account with $email already exists and its password " +
+                    "does not match. Use the password you originally set, or a new email.",
+            )
+        }
+    }
+
+    private fun identityToolkitCall(endpoint: String, apiKey: String, body: JSONObject): JSONObject {
+        val url = URL("https://identitytoolkit.googleapis.com/v1/$endpoint?key=$apiKey")
+        val conn = url.openConnection() as HttpURLConnection
+        try {
+            conn.requestMethod = "POST"
+            conn.doOutput = true
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.outputStream.use { it.write(body.toString().toByteArray()) }
+            val code = conn.responseCode
+            val stream = if (code in 200..299) conn.inputStream else conn.errorStream
+            val text = stream?.bufferedReader()?.use { it.readText() } ?: ""
+            val json = runCatching { JSONObject(text) }.getOrElse { JSONObject() }
+            if (code !in 200..299) {
+                error("$endpoint failed: ${json.optString("error", text)}")
+            }
+            return json
+        } finally {
+            conn.disconnect()
         }
     }
 }

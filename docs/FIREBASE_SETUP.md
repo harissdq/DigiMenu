@@ -66,7 +66,7 @@ together.
         "orders": {
           "$orderId": {
             ".read": "auth != null && (root.child('managers').child(auth.uid).child('restaurantId').val() == $restaurantId || root.child('restaurants').child($restaurantId).child('managers').child(auth.uid).val() == true || auth.token.email == 'haris.sdq@gmail.com')",
-            ".write": "newData.exists() && newData.child('tableId').val() != null"
+            ".write": "(newData.exists() && newData.child('tableId').val() != null) || (auth != null && (root.child('managers').child(auth.uid).child('restaurantId').val() == $restaurantId || root.child('restaurants').child($restaurantId).child('managers').child(auth.uid).val() == true || auth.token.email == 'haris.sdq@gmail.com'))"
           }
         },
         "managers": {
@@ -85,13 +85,13 @@ together.
 > Manager-only writes are gated on one of those matching `$restaurantId`, plus
 > the admin email, so each account only ever manages its own restaurant.
 >
-> `orders` is intentionally writable by **anyone** (`newData` write) so a
-> customer in their phone browser can place an order (dine-in or take-away)
+> `orders` is writable by **anyone** placing an order (dine-in or take-away)
 > without an account — but only if the payload carries a `tableId` (take-away
-> orders use the literal `"TAKEAWAY"`). Reads are manager/admin-only, so
-> customers never see other people's orders. For stricter control, generate a
-> short-lived signed token per scan and validate it server-side (out of scope
-> for the boilerplate).
+> orders use the literal `"TAKEAWAY"`). The restaurant's own managers can also
+> write an order (e.g. to update its status), gated by the same tenant check as
+> the other nodes. Reads are manager/admin-only, so customers never see other
+> people's orders. For stricter control, generate a short-lived signed token
+> per scan and validate it server-side (out of scope for the boilerplate).
 
 **Publishing the rules.** The exact JSON above is also committed as
 [`docs/database.rules.json`](database.rules.json) — use that file, not copy-paste.
