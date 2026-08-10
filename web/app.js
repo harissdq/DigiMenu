@@ -370,7 +370,8 @@
       items[line.item.id] = {
         name: line.item.name,
         price: line.item.price,
-        qty: line.qty
+        qty: line.qty,
+        category: line.item.category || ""
       };
     });
 
@@ -433,8 +434,10 @@
   // public status fields individually (rules expose only those). Tracking works
   // because the order key is the (effectively unguessable) push id.
   var trackingRefs = [];
+  var lastTrackedStatus = null;
 
   function startTracking(order) {
+    lastTrackedStatus = order.status || STATUS_NEW;
     if (IS_DEMO) {
       renderOrderStatus(order);
       return;
@@ -448,6 +451,10 @@
         var status = snap.val() || STATUS_NEW;
         return reasonRef.once("value").then(function (reasonSnap) {
           renderOrderStatus({ status: status, declineReason: reasonSnap.val() || "" });
+          if (status !== lastTrackedStatus) {
+            notifyStatusChange(lastTrackedStatus, status, reasonSnap.val() || "");
+            lastTrackedStatus = status;
+          }
         });
       });
     };
@@ -463,6 +470,81 @@
       trackingRefs[i].ref.off("value", trackingRefs[i].cb);
     }
     trackingRefs = [];
+  }
+
+  /* ---- order status notifications (browser-level P6) ----
+   * This app has no push backend, so the customer is alerted in-page while the
+   * confirmation screen is open: an audio beep, a document title change and a
+   * dismissible banner. READY/DONE/REJECTED are the "action" states. */
+  var statusToastTimer = null;
+
+  function notifyStatusChange(oldStatus, newStatus, reason) {
+    if (newStatus === STATUS_READY) {
+      flashStatusToast("Your order is ready to collect!", true);
+      document.title = "Order ready! \u2014 DigiMenu";
+      playBeep();
+    } else if (newStatus === STATUS_DONE) {
+      flashStatusToast("Order completed. Enjoy your meal!", true);
+      document.title = "Order completed \u2014 DigiMenu";
+    } else if (newStatus === STATUS_REJECTED) {
+      flashStatusToast(
+        reason ? "Order rejected: " + reason : "Order rejected. Please contact the restaurant.",
+        false
+      );
+      document.title = "Order rejected \u2014 DigiMenu";
+      playBeep();
+    } else if (newStatus === STATUS_CANCELLED) {
+      flashStatusToast("Order cancelled. Please contact the restaurant.", false);
+      document.title = "Order cancelled \u2014 DigiMenu";
+    } else if (newStatus === STATUS_ACCEPTED || newStatus === STATUS_PREPARING) {
+      // Reached automatically as the order moves forward; only refresh the title.
+      document.title = "DigiMenu \u2014 " + orderStatusLabel(newStatus);
+    }
+  }
+
+  function orderStatusLabel(status) {
+    for (var i = 0; i < ORDER_TRACK_STEPS.length; i++) {
+      if (ORDER_TRACK_STEPS[i].key === status) return ORDER_TRACK_STEPS[i].label;
+    }
+    return status;
+  }
+
+  function flashStatusToast(message, positive) {
+    var existing = $("status-toast");
+    if (existing) existing.remove();
+    var toast = document.createElement("div");
+    toast.id = "status-toast";
+    toast.className = "status-toast " + (positive ? "ok" : "bad");
+    var text = document.createElement("span");
+    text.textContent = message;
+    toast.appendChild(text);
+    var close = document.createElement("button");
+    close.type = "button";
+    close.className = "toast-close";
+    close.textContent = "\u00d7";
+    close.addEventListener("click", function () { toast.remove(); });
+    toast.appendChild(close);
+    document.body.appendChild(toast);
+    if (statusToastTimer) window.clearTimeout(statusToastTimer);
+    statusToastTimer = window.setTimeout(function () { toast.remove(); }, 8000);
+  }
+
+  var audioCtx = null;
+  function playBeep() {
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === "suspended") audioCtx.resume();
+      var osc = audioCtx.createOscillator();
+      var gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = "sine";
+      osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.6);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.6);
+    } catch (e) { /* audio unavailable (e.g. no user gesture yet); banner still shows */ }
   }
 
   function renderOrderStatus(order) {
@@ -541,6 +623,13 @@
 
   $("lead-form").addEventListener("submit", submitLead);
   $("place-order").addEventListener("click", placeOrder);
+  $("order-again").addEventListener("click", function () {
+    stopTracking();
+    var toast = $("status-toast");
+    if (toast) toast.remove();
+    document.title = "DigiMenu";
+    show("menu");
+  });
   window.addEventListener("online", function () { setOnline(true); });
   window.addEventListener("offline", function () { setOnline(false); });
 

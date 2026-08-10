@@ -221,3 +221,39 @@ tab (removes the tenant, its data, and unlinks its managers); the admin-only
    as `ACCEPTED`), then *Start preparing* → *Ready* → *Mark done*. The
    customer's confirmation page follows the same timeline live; a **Reject**
    (with a reason) shows the reason instead.
+
+## 6. Kitchen display, notifications, reports
+
+### Kitchen display (`kitchen.html`)
+
+A browser page for the cooking line at
+`https://harissdq.github.io/DigiMenu/kitchen.html`. It uses the **same**
+`web/config.js` values as the customer page; no extra setup. Because orders are
+manager-only in the rules, kitchen staff sign in with the restaurant's **manager
+account** — the page derives the tenant from `managers/{uid}/restaurantId` and
+shows the live queue grouped *To prepare / Preparing / Ready*, beeping on new
+orders and offering one legal action per card (`Accept` → `Start preparing` →
+`Ready`). To keep staff credentials separate from the manager device, simply
+create a second email/password account for the restaurant and link it to the
+same `restaurantId` (see the seed section) — every account with that mapping can
+read and advance the queue.
+
+### Customer notifications
+
+The customer page alerts **in-page** while the confirmation screen is open
+(beep + banner + tab title on READY/DONE/REJECTED/CANCELLED, plus a "Place
+another order" button). There is no push backend, so nothing is needed in the
+Firebase console. To add true push (FCM) or WhatsApp/SMS later you would need a
+server/notification provider that watches `orders/{orderId}/status` — the data
+it needs (`statusChangedAt`, `declineReason`, order key) is already written.
+
+### Reports
+
+The manager app's **Reports** tab shows period-filtered sales (Today / 7 days /
+30 days / All time): revenue, average order value, dine-in vs take-away,
+cancelled vs completed, sales by category and top items, plus a **Copy CSV**
+button. It aggregates the existing orders stream client-side, so it needs no new
+rules or database nodes. Item categories flow into reports automatically from
+new web orders (`OrderLine.category`); orders placed before this update have no
+category and are excluded from the category breakdown (but still count towards
+totals and item sales).

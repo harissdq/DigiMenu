@@ -8,6 +8,8 @@ data class OrderLine(
     var name: String = "",
     var price: Double = 0.0,
     var qty: Int = 0,
+    /** Menu category of the item, written by the customer app for reporting. */
+    var category: String = "",
 )
 
 /**

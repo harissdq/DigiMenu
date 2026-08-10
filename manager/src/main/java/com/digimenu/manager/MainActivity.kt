@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Settings
@@ -37,6 +38,7 @@ import com.digimenu.manager.ui.screens.LoginScreen
 import com.digimenu.manager.ui.screens.MenuScreen
 import com.digimenu.manager.ui.screens.OrdersScreen
 import com.digimenu.manager.ui.screens.QrCodesScreen
+import com.digimenu.manager.ui.screens.ReportsScreen
 import com.digimenu.manager.ui.screens.TablesScreen
 import com.digimenu.manager.ui.theme.DigiMenuTheme
 import com.digimenu.manager.ui.viewmodel.ManagerViewModel
@@ -70,6 +72,7 @@ private enum class ManagerTab(val label: String, val icon: ImageVector) {
     QrCodes("QR Codes", Icons.Filled.QrCode2),
     Orders("Orders", Icons.Filled.ShoppingCart),
     Tables("Tables", Icons.Filled.TableRestaurant),
+    Reports("Reports", Icons.Filled.BarChart),
     Admin("Admin", Icons.Filled.Settings),
 }
 
@@ -94,6 +97,8 @@ private fun ManagerScaffold(viewModel: ManagerViewModel) {
         add(ManagerTab.Menu)
         add(ManagerTab.QrCodes)
         add(ManagerTab.Orders)
+        add(ManagerTab.Tables)
+        add(ManagerTab.Reports)
         if (isAdmin) add(ManagerTab.Admin)
     }
 
@@ -129,6 +134,7 @@ private fun ManagerScaffold(viewModel: ManagerViewModel) {
                 ManagerTab.QrCodes -> QrCodesScreen()
                 ManagerTab.Orders -> OrdersScreen()
                 ManagerTab.Tables -> TablesScreen()
+                ManagerTab.Reports -> ReportsScreen()
                 ManagerTab.Admin -> AdminScreen()
             }
         }

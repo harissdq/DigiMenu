@@ -371,3 +371,110 @@ button:disabled {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* Status toast (P6) */
+#status-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 96px;
+  transform: translateX(-50%);
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: min(92vw, 480px);
+  padding: 14px 16px;
+  border-radius: 12px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  animation: fade-in 0.25s ease;
+}
+
+#status-toast.ok {
+  background: var(--primary);
+}
+
+#status-toast.bad {
+  background: var(--danger);
+}
+
+#status-toast .toast-close {
+  width: auto;
+  padding: 0 6px;
+  margin: 0;
+  background: transparent;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* Kitchen display (P5) */
+.kitchen-main {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+#kds-login {
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+#kds-login button {
+  width: 100%;
+}
+
+.kitchen-section {
+  margin: 20px 0 10px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.kitchen-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 5px solid var(--primary);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+
+.kitchen-card.ready {
+  border-left-color: #2e7d32;
+  background: #f1f8e9;
+}
+
+.kitchen-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.kitchen-label {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--primary-dark);
+}
+
+.kitchen-time {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.kitchen-line {
+  padding: 3px 0;
+  font-size: 15px;
+}
+
+.kitchen-action {
+  width: 100%;
+  margin-top: 10px;
+}

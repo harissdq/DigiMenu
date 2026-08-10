@@ -19,10 +19,18 @@ address.
 │  ├──────────┼──────────────┤ │
 │  │ QR code  │ Order tracker│ │
 │  │ generator│ (live feed)  │ │
+│  │ Tables   │ Reports      │ │
 │  └──────────┴──────────────┘ │
 └──────────────┬───────────────┘
                │  QR encodes the web page URL: ?restaurant={id}&table={id}
                │  Take Away QR: ?restaurant={id}&takeaway=1
+               ▼
+┌──────────────────────────────┐
+│  Kitchen display (web/)      │   static HTML/JS + Firebase JS SDK,
+│  kitchen.html + kitchen.js   │   sign in as a manager, live queue,
+│  NEW→ACCEPTED→PREPARING→READY│   audio alert on new orders
+└──────────────┬───────────────┘
+               │
                ▼
 ┌──────────────────────────────┐
 │  Customer web page (web/)    │   static HTML/CSS/JS + Firebase JS SDK
@@ -32,6 +40,7 @@ address.
 │  │ live menu + cart       │  │
 │  │ place order            │  │
 │  │ take away ordering     │  │
+│  │ live tracker + alerts  │  │
 │  └────────────────────────┘  │
 └──────────────┬───────────────┘
                │
@@ -40,14 +49,18 @@ address.
 │  Firebase Realtime Database  │   single backend, tenant-scoped
 │  managers/{uid}/restaurantId │
 │  restaurants/{id}/{info,menu,│
-│   tables, orders, managers}  │
+│   tables, orders, sessions}  │
 └──────────────────────────────┘
 ```
 
-- **Manager** (Android) pushes writes: menu, stock, tables, order status.
+- **Manager** (Android) pushes writes: menu, stock, tables, order status, sessions.
+- **Kitchen display** (web) shows the live queue and advances orders
+  (`NEW → ACCEPTED → PREPARING → READY`) — same nodes, same rules, same legal
+  transitions as the Android app.
 - **Customer** (web) reads menu/tables live and writes orders.
-- **Shared Android code** (models, Firebase repositories, QR codec/generator)
-  lives once in `:core`. The web app mirrors the same schema with the JS SDK.
+- **Shared Android code** (models, Firebase repositories, QR codec/generator,
+  report aggregation) lives once in `:core`. The web app mirrors the same schema
+  with the JS SDK.
 
 ## 2. Tech stack
 
@@ -57,6 +70,7 @@ address.
 | DI           | Hilt + KSP                                | Standard, compile-safe graph |
 | Async        | Kotlin Coroutines + Flows                 | Repos expose `Flow` for real-time data |
 | Customer UI  | Plain HTML/CSS/JS + Firebase JS SDK       | Zero install, works in every phone browser |
+| Kitchen UI   | Plain HTML/JS + Firebase JS SDK (Auth+DB)  | Runs in any browser/tablet; manager sign-in |
 | Backend      | Firebase Realtime Database                | Change events push to all subscribers instantly — the "no refresh" requirement |
 | Auth         | Firebase Auth (email/password)            | Manager sign-in; authorisation via `managers/{uid}` node |
 | QR *write*   | ZXing core (`QRCodeWriter`)               | Pure-JVM bitmap generation, no camera needed |
@@ -74,13 +88,15 @@ queries are needed, but it is overkill for this schema.
 
 ```
 :core      — shared Android library (no UI): models, FirebaseRefs, repositories,
-             QR codec + generator, DI module
+             report aggregation (ReportStats), QR codec + generator, DI module
 :manager   — the single Android app (Manager Dashboard)
-web/       — customer-facing static site (independent of the Gradle build)
+web/       — customer page (index.html) + kitchen display (kitchen.html);
+             static, independent of the Gradle build
 ```
 
-The customer interface is deliberately *not* an Android module: customers should
-never install anything — the QR opens the web page directly.
+The customer and kitchen interfaces are deliberately *not* Android modules:
+customers should never install anything — the QR opens the web page directly,
+and the kitchen display runs on any spare browser/tablet.
 
 ## 4. Data model (Firebase Realtime Database)
 
@@ -98,7 +114,7 @@ restaurants/{restaurantId}/
       orders: { orderId: true }, paid, total }
   orders/{orderId}/
     { id, orderType, tableId, tableLabel, customerName, customerPhone,
-      address, items: { itemId: { name, price, qty } },
+      address, items: { itemId: { name, price, qty, category } },
       total, status, createdAt, statusChangedAt, declineReason? }
   managers/{uid} = true         -> legacy uid map (also seeded)
 ```
@@ -122,12 +138,45 @@ Real-time propagation:
   immediately.
 - **Orders**: web checkout writes to `orders/`; the manager's `observeOrders()`
   gets the child the instant it lands.
-- **Status**: the manager advances an order through a validated state machine
-  (`OrderStatus` in `core/.../model/OrderStatus.kt`):
+- **Status**: the manager app and the kitchen display advance an order through a
+  validated state machine (`OrderStatus` in `core/.../model/OrderStatus.kt`):
   `NEW → ACCEPTED → PREPARING → READY → DONE`, or off-path to
   `REJECTED` (with `declineReason`) / `CANCELLED`. Every transition is a single
   atomic write of `status` + `statusChangedAt`. The customer's confirmation page
   subscribes to `orders/{orderId}` and renders the same timeline live.
+
+## 4b. Kitchen display (P5)
+
+`web/kitchen.html` is a browser page for the cooking line. Because orders are
+manager/tenant-scoped in the rules, a staff member signs in with the
+restaurant's **manager account** (email/password via the Firebase JS SDK), the
+page resolves `managers/{uid}/restaurantId`, and subscribes to
+`restaurants/{id}/orders`. It renders three queues — **To prepare**
+(`NEW`/`ACCEPTED`), **Preparing**, **Ready** — oldest first, plays a beep when a
+new order arrives, and offers one legal action per state:
+`Accept order` (NEW→ACCEPTED) → `Start preparing` (ACCEPTED→PREPARING) →
+`Ready` (PREPARING→READY). Terminal orders are dropped from the queue. This is
+purely a client; no new backend nodes or rules are required.
+
+## 4c. Customer notifications (P6)
+
+The web app has no push backend, so the customer is alerted **in-page** while
+the confirmation screen is open: when the live tracker observes a status change
+it plays a beep, updates `document.title`, and shows a dismissible banner for the
+action states (READY / DONE / REJECTED / CANCELLED), plus a *Place another
+order* button to start over. "Push" (FCM) or WhatsApp/SMS alerts would require a
+server/notification provider and are documented as a future extension — the
+schema and tracker already expose everything needed to trigger them.
+
+## 4d. Reports (P7)
+
+`ReportsScreen` (a new manager tab) aggregates the live orders stream per
+period — **Today / 7 days / 30 days / All time** — using the pure
+`ReportStats.aggregate()` function in `core` (no new writes). It shows revenue,
+average order value, order/dine-in/take-away counts, cancelled vs completed,
+sales by category and top items, and can copy a **CSV** export to the
+clipboard. Reporting relies on `OrderLine.category`, which the customer page now
+writes when placing an order.
 
 ## 5. QR → restaurant & table mapping
 
@@ -172,14 +221,26 @@ Pipeline:
 `orders` live: a table shows *Free*, *Seated since HH:mm*, or a settled bill.
 **Close & bill** snapshots the total into the session; **Mark paid** archives it.
 
+**Manager — reports**
+`ReportsScreen` → `ReportsViewModel` → `ReportStats.aggregate(orders, from)`
+period-filtered over the live orders stream → revenue / counts / category & item
+breakdowns + CSV export.
+
+**Kitchen — display & advance the queue**
+Open `https://harissdq.github.io/DigiMenu/kitchen.html`, sign in with the
+restaurant's manager account → live queue (`To prepare` / `Preparing` / `Ready`)
+with an audio alert on new orders and one legal action per card (Accept / Start
+preparing / Ready).
+
 **Customer — scan → order**
 Phone camera opens the QR URL → `web/app.js` resolves the restaurant id, verifies
 the table (or enters take-away mode) → lead capture (name + phone, plus a
 delivery address in take-away mode) → live menu + cart →
 `db.ref(.../orders).push()` (key retained) → `.set(order)`. The order appears on
-the manager dashboard instantly, and the customer's confirmation page subscribes
-to `orders/{orderId}` to show the live status timeline (`Placed → Accepted →
-Preparing → Ready → Completed`, or the rejection reason).
+the manager dashboard and the kitchen display instantly, and the customer's
+confirmation page subscribes to `orders/{orderId}` to show the live status
+timeline (`Placed → Accepted → Preparing → Ready → Completed`, or the rejection
+reason) — with an audio/visual alert when the status changes (P6).
 
 **Manager — tenant resolution**
 `ManagerViewModel.login()` → `RestaurantSession.refresh()` →
@@ -200,6 +261,11 @@ resolved restaurant name (`restaurants/{id}/info/name`).
   Only the tiny `status` / `statusChangedAt` / `declineReason` subfields of an
   order are publicly readable (so a customer can follow their own order by its
   unguessable push key) — the rest of an order stays manager-only.
+- The kitchen display authenticates with the restaurant's **manager account**,
+  so it inherits the exact tenant-scoped read/write rights of the Android app.
+  It shares the account with the manager device — fine for a single-restaurant
+  setup; for separate kitchen staff, create a second manager account for the
+  same `restaurantId`.
 - The QR payload id is only the *key* — never embed prices or customer data in a QR.
 - The web page never authenticates a customer; the **rules** are the security
   boundary for public writes.
@@ -220,7 +286,8 @@ resolved restaurant name (`restaurants/{id}/info/name`).
 4. `./gradlew :manager:assembleDebug` (needs JDK 17 + Android SDK 35), or push
    and download the APK artifact from Actions.
 5. The web page is deployed to `https://harissdq.github.io/DigiMenu/` on every
-   push to `main`.
+   push to `main` — `index.html` (customer) and `kitchen.html` (kitchen
+   display) are served side by side.
 6. Seed `managers/{uid}/restaurantId` + `restaurants/demo-restaurant` (info,
    tables, menu, manager uid) as described in `docs/FIREBASE_SETUP.md`, then
    print the table and Take Away QRs from the app.

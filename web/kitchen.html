@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="DigiMenu kitchen display - live order queue for the kitchen." />
+  <title>DigiMenu Kitchen</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2300695c'/%3E%3Ccircle cx='16' cy='16' r='10' fill='%23fff'/%3E%3Ccircle cx='16' cy='16' r='6' fill='%2300695c'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="app-bar">
+    <span class="brand">DigiMenu Kitchen</span>
+    <span id="kitchen-status" class="table-label"></span>
+  </header>
+
+  <main class="kitchen-main">
+    <section id="kds-login" class="screen">
+      <h2>Staff sign in</h2>
+      <p class="muted">Sign in with the restaurant's manager account to view and advance the live order queue.</p>
+      <input id="kds-email" type="email" autocomplete="email" placeholder="Manager email" />
+      <input id="kds-password" type="password" autocomplete="current-password" placeholder="Password" />
+      <p class="error" id="kds-error"></p>
+      <button id="kds-login-btn">Sign in</button>
+    </section>
+
+    <section id="kds-queue" class="screen hidden">
+      <p class="muted empty" id="kds-empty">No active orders.</p>
+      <div id="kitchen-list"></div>
+    </section>
+  </main>
+
+  <script src="config.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="kitchen.js"></script>
+</body>
+</html>
