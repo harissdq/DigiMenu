@@ -24,7 +24,7 @@ fun compressPhoto(bytes: ByteArray, maxDim: Int = 720, quality: Int = 72): ByteA
     val src = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return null
     val w = src.width
     val h = src.height
-    val scale = if (max(w, h) > maxDim) maxDim.toFloat() / max(w, h) else 1f
+    val scale = if (maxOf(w, h) > maxDim) maxDim.toFloat() / maxOf(w, h) else 1f
     val out = Bitmap.createScaledBitmap(src, (w * scale).toInt().coerceAtLeast(1), (h * scale).toInt().coerceAtLeast(1), true)
     if (out != src) src.recycle()
     val stream = java.io.ByteArrayOutputStream()
